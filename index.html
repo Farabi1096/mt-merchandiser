@@ -2,1235 +2,1132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPARTA MTD Sales Performance Dashboard</title>
-    <!-- Load Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finance Tracker</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Chart.js and DataLabels Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-    <!-- Load PapaParse for CSV reading -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.344.0"
+        }
+    }
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f4f7f9;
-            /* Prevent text selection */
-            -webkit-user-select: none; 
-            -moz-user-select: none; 
-            -ms-user-select: none; 
-            user-select: none; 
-        }
-        input, textarea {
-            user-select: text;
-        }
-
-        /* Custom Gradient Fill for Header - Minimal Dark Blue */
-        .header-gradient {
-            background: linear-gradient(120deg, #052065 0%, #0060E5 100%); 
-        }
-
-        .gauge-meter {
-            height: 10px;
-            border-radius: 9999px;
-            overflow: hidden;
-            background-color: #e5e7eb; 
-        }
-        .gauge-fill {
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 9999px;
-            height: 100%; 
-        }
-        /* RAG Colors */
-        .fill-green { background-color: #00B991; }
-        .fill-amber { background-color: #FFA000; }
-        .fill-red { background-color: #F33131; }
-        .fill-blue { background-color: #0060E5; }
-        
-        .ring-green { --tw-ring-color: #00B991; }
-        .ring-amber { --tw-ring-color: #FFA000; }
-        .ring-red { --tw-ring-color: #F33131; }
-        .ring-blue { --tw-ring-color: #0060E5; }
-
-        .text-green { color: #008848; } 
-        .text-amber { color: #FFA000; }
-        .text-red { color: #F33131; }
-        .text-blue { color: #0060E5; }
-        .text-red-600 { color: #F33131; } 
-        .text-green-600 { color: #008848; }
-
-        .chart-bar {
-            transition: width 0.7s ease-out;
-            height: 100%;
-            min-width: 1rem;
-        }
-        
-        /* Tab Styles */
-        .tab-button {
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem; 
-            font-weight: 500;
-            font-size: 0.875rem; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 2px solid transparent;
-            cursor: pointer;
-        }
-        .tab-active {
-            background-color: white;
-            color: #052065; 
-            font-weight: 700;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transform: scale(1.02); 
-        }
-        .tab-inactive {
-            background-color: transparent;
-            color: #f4f7f9;
-            opacity: 0.8;
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-        .tab-inactive:hover {
-            opacity: 1;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Trend Button Styles */
-        .trend-btn {
-            padding: 0.25rem 0.75rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            border-radius: 0.375rem;
-            border: 1px solid #e5e7eb;
-            background-color: white;
-            color: #4b5563;
-            transition: all 0.2s;
-        }
-        .trend-btn:hover {
-            background-color: #f9fafb;
-            border-color: #d1d5db;
-        }
-        .trend-btn.active {
-            background-color: #052065; 
-            color: white;
-            border-color: #052065;
-        }
-        
-        /* Loading Overlay */
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.95);
-            z-index: 50;
-            display: none; /* Controlled by JS */
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #0060E5; 
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Login Screen */
-        #login-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #f4f7f9;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* ANIMATIONS */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .animate-fade-in-up {
-            animation: fadeInUp 0.5s ease-out forwards;
-            opacity: 0; 
-        }
-        
-        .animate-fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-
-        .hover-scale {
-            transition: transform 0.3s ease;
-        }
-        .hover-scale:hover {
-            transform: translateY(-2px);
-        }
-
-        /* Fix for sticky column */
-        @media (min-width: 1024px) {
-            .min-w-full th:first-child,
-            .min-w-full td:first-child {
-                position: sticky;
-                left: 0;
-                z-index: 10;
-                box-shadow: 2px 0 3px -1px rgba(0, 0, 0, 0.05); 
-            }
-            .min-w-full td:first-child {
-                background-color: white;
-            }
-            .min-w-full tfoot td:first-child {
-                 background-color: #f3f4f6; 
-            }
-        }
+        /* Custom scrollbar and animations from your code */
+        .custom-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; }
+        :root { --ease-ios: cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes pageEnter { from { opacity: 0; transform: scale(0.99) translateY(5px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes staggerIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        .animate-page-enter { animation: pageEnter 0.4s var(--ease-ios) forwards; }
+        .animate-slide-up-fade { animation: slideUpFade 0.5s var(--ease-ios) backwards; }
+        .animate-stagger-in { animation: staggerIn 0.3s var(--ease-ios) forwards; }
+        .animate-scale-in { animation: scaleIn 0.4s var(--ease-ios) backwards; }
+        .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
     </style>
 </head>
-<body class="p-4 sm:p-8">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white h-screen overflow-hidden">
+    
+    <div id="root"></div>
 
-    <!-- Login Screen -->
-    <div id="login-screen">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-gray-100 animate-fade-in-up">
-            <div class="mb-6">
-                <div class="w-16 h-16 bg-[#eef2ff] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-[#052065]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800">Secure Access</h2>
-                <p class="text-sm text-gray-500 mt-2">Enter your PIN to view the dashboard.</p>
+    <script type="text/babel" data-type="module">
+        import { createRoot } from 'react-dom/client';
+        
+        // --- YOUR CODE STARTS HERE ---
+		import React, { useState, useEffect, useMemo } from 'react';
+import { Camera, CheckCircle, XCircle, Home, LayoutDashboard, MapPin, Building, ChevronLeft, Image as ImageIcon, Filter, Check, X, Clock, Search, Loader2, Package, Tags, AlertCircle, Lock, KeyRound, Store, ClipboardCheck, TrendingUp, TrendingDown, Calendar, Maximize2, Download, CalendarDays, Target, User, Calendar as CalendarIcon, Hash } from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot } from 'firebase/firestore';
+
+// --- FIREBASE INITIALIZATION ---
+const defaultFirebaseConfig = {
+    apiKey: "dummy-key",
+    authDomain: "dummy-domain.firebaseapp.com",
+    projectId: "dummy-project",
+    storageBucket: "dummy-bucket.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef"
+};
+
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : defaultFirebaseConfig;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// --- GOOGLE APPS SCRIPT URL (For uploading visits & fetching audit data) ---
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx9wMmEGqfi_IPVoyvDIhW0S__SeVqdmPlQTiO3qlBSP63ddbaHkz3EA-Iam0eeP2BBNw/exec';
+
+// --- MODERN TRADE MASTER DATA (HARDCODED) ---
+const OUTLET_MASTER = [
+  // Subah Tabassum
+  { accountName: "Shwapno", outletCode: "SHW-MIR-01", outletName: "Taltola Bus Stand", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Wednesday", merchandiserName: "Subah Tabassum" },
+  { accountName: "Shwapno", outletCode: "SHW-MIR-02", outletName: "West Kafrul", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Thursday", merchandiserName: "Subah Tabassum" },
+  { accountName: "Shwapno", outletCode: "F694", outletName: "Bhanga Bridge 60 Feet Outlet", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Friday", merchandiserName: "Subah Tabassum" },
+  { accountName: "Shwapno", outletCode: "SHW-MIR-03", outletName: "Kazipara 2", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Saturday", merchandiserName: "Subah Tabassum" },
+  { accountName: "Shwapno", outletCode: "F549", outletName: "Itkhola Bazar East Kazipara", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Sunday", merchandiserName: "Subah Tabassum" },
+  { accountName: "Shwapno", outletCode: "F085", outletName: "Uttar Kazipara Outlet", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Monday", merchandiserName: "Subah Tabassum" },
+
+  // Mukta Rahman
+  { accountName: "Shwapno", outletCode: "SHW-MIR-04", outletName: "Mazar Road, Mirpur 1", territoryName: "Mirpur/Savar", routeName: "Mirpur 1", visitDay: "Monday", merchandiserName: "Mukta Rahman" },
+  { accountName: "Shwapno", outletCode: "SHW-MIR-05", outletName: "Tolarbag, Mirpur 1", territoryName: "Mirpur/Savar", routeName: "Mirpur 1", visitDay: "Tuesday", merchandiserName: "Mukta Rahman" },
+  { accountName: "Shwapno", outletCode: "SHW-MIR-06", outletName: "Ahmednagar", territoryName: "Mirpur/Savar", routeName: "Mirpur 1", visitDay: "Wednesday", merchandiserName: "Mukta Rahman" },
+  { accountName: "Shwapno", outletCode: "SHW-MIR-07", outletName: "60 ft borobag, Mirpur 2", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Friday", merchandiserName: "Mukta Rahman" },
+
+  // Pinky Akter Shila
+  { accountName: "Shwapno", outletCode: "D065", outletName: "Mirpur -6 New", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Tuesday", merchandiserName: "Pinky Akter Shila" },
+  { accountName: "Shwapno", outletCode: "F422", outletName: "C -Block Pallabi Outlet", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Saturday", merchandiserName: "Pinky Akter Shila" },
+  { accountName: "Shwapno", outletCode: "F523", outletName: "Shopnonagar Pallabi", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Sunday", merchandiserName: "Pinky Akter Shila" },
+  { accountName: "Shwapno", outletCode: "SHW-MIR-08", outletName: "Playing Ground, Mirpur 12", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Monday", merchandiserName: "Pinky Akter Shila" },
+
+  // Maniurnahar (Akhi)
+  { accountName: "Shwapno", outletCode: "F465", outletName: "Milk Vita Mor Mirpur-7", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Friday", merchandiserName: "Maniurnahar (Akhi)" },
+  { accountName: "Shwapno", outletCode: "F506", outletName: "Block-D Mirpur 15", territoryName: "Mirpur/Savar", routeName: "Mirpur 5", visitDay: "Sunday", merchandiserName: "Maniurnahar (Akhi)" },
+  { accountName: "Shwapno", outletCode: "F050", outletName: "Mirpur 10, Block C", territoryName: "Mirpur/Savar", routeName: "Mirpur 5", visitDay: "Monday", merchandiserName: "Maniurnahar (Akhi)" },
+
+  // Al Mamun
+  { accountName: "Shwapno", outletCode: "F438", outletName: "Poschim Bhasantek", territoryName: "Mirpur/Savar", routeName: "Mirpur 4", visitDay: "Thursday", merchandiserName: "Al Mamun" },
+  { accountName: "Shwapno", outletCode: "SHW-NIK-01", outletName: "Khilkhet Lake City", territoryName: "Nikunja 1", routeName: "Khilkhet", visitDay: "Friday", merchandiserName: "Al Mamun" },
+  { accountName: "Shwapno", outletCode: "F392", outletName: "Joar Shahara Outlet", territoryName: "Nikunja 1", routeName: "Joar Shahara", visitDay: "Saturday", merchandiserName: "Al Mamun" },
+  { accountName: "Shwapno", outletCode: "F536", outletName: "Namapara Kawla", territoryName: "Nikunja 1", routeName: "Kawla", visitDay: "Sunday", merchandiserName: "Al Mamun" },
+
+  // Emon Kawser Shanto
+  { accountName: "Shwapno", outletCode: "SHW-BAN-01", outletName: "North Banasree B Block", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Sunday", merchandiserName: "Emon Kawser Shanto" },
+  { accountName: "Shwapno", outletCode: "F112", outletName: "South Banasre", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Monday", merchandiserName: "Emon Kawser Shanto" },
+  { accountName: "Shwapno", outletCode: "F013", outletName: "Banasree H", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Tuesday", merchandiserName: "Emon Kawser Shanto" },
+  { accountName: "Shwapno", outletCode: "F595", outletName: "Block-C Banashree", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Wednesday", merchandiserName: "Emon Kawser Shanto" },
+
+  // Mehedi Hasan Khan Anik
+  { accountName: "Shwapno", outletCode: "SHW-GUL-04", outletName: "Gulshan Badda Link Road", territoryName: "Gulshan 4", routeName: "Gulshan", visitDay: "Saturday", merchandiserName: "Mehedi Hasan Khan Anik" },
+  { accountName: "Shwapno", outletCode: "SHW-BAD-01", outletName: "Badda Joy Bangla Mor", territoryName: "Badda 1", routeName: "Badda", visitDay: "Thursday", merchandiserName: "Mehedi Hasan Khan Anik" },
+  { accountName: "Shwapno", outletCode: "SHW-BAD-02", outletName: "Uttar Badda", territoryName: "Badda 1", routeName: "Badda", visitDay: "Friday", merchandiserName: "Mehedi Hasan Khan Anik" },
+  { accountName: "Shwapno", outletCode: "F497", outletName: "South Badda Bazar", territoryName: "Badda 1", routeName: "Badda", visitDay: "Monday", merchandiserName: "Mehedi Hasan Khan Anik" },
+
+  // Md. Rakibul
+  { accountName: "Shwapno", outletCode: "SHW-KHI-01", outletName: "Central Bashabo", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Monday", merchandiserName: "Md. Rakibul" },
+  { accountName: "Shwapno", outletCode: "D080", outletName: "Mugda Outlet", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Tuesday", merchandiserName: "Md. Rakibul" },
+  { accountName: "Shwapno", outletCode: "F579", outletName: "Manda Outlet", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Wednesday", merchandiserName: "Md. Rakibul" },
+  { accountName: "Shwapno", outletCode: "F477", outletName: "Kadamtola Basabo", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Thursday", merchandiserName: "Md. Rakibul" },
+
+  // Mr. Romzan Hossin
+  { accountName: "Shwapno", outletCode: "F483", outletName: "Dakshin Kutubkahli Jatrabari", territoryName: "CTG Road 2", routeName: "Jatrabari", visitDay: "Friday", merchandiserName: "Mr. Romzan Hossin" },
+  { accountName: "Shwapno", outletCode: "SHW-JAT-02", outletName: "Jatrabari 2", territoryName: "CTG Road 1", routeName: "Jatrabari", visitDay: "Saturday", merchandiserName: "Mr. Romzan Hossin" },
+  { accountName: "Shwapno", outletCode: "SHW-JAT-03", outletName: "Sontek Kajla", territoryName: "CTG Road 1", routeName: "Jatrabari", visitDay: "Monday", merchandiserName: "Mr. Romzan Hossin" },
+  { accountName: "Shwapno", outletCode: "SHW-JAT-04", outletName: "Paterbagh", territoryName: "CTG Road 1", routeName: "Jatrabari", visitDay: "Tuesday", merchandiserName: "Mr. Romzan Hossin" },
+
+  // Rafiqul Islam Noyan
+  { accountName: "Shwapno", outletCode: "D014", outletName: "Narayangong", territoryName: "Ngonj 1", routeName: "Narayanganj", visitDay: "Wednesday", merchandiserName: "Rafiqul Islam Noyan" },
+  { accountName: "Shwapno", outletCode: "F792", outletName: "Mograpara, Sonargaon", territoryName: "Ngonj 1", routeName: "Sonargaon", visitDay: "Friday", merchandiserName: "Rafiqul Islam Noyan" },
+  { accountName: "Shwapno", outletCode: "SHW-NGO-01", outletName: "Panchabati Narayanganj", territoryName: "Ngonj 1", routeName: "Narayanganj", visitDay: "Saturday", merchandiserName: "Rafiqul Islam Noyan" },
+  { accountName: "Shwapno", outletCode: "F788", outletName: "Shantidhara R/A", territoryName: "Ngonj 1", routeName: "Narayanganj", visitDay: "Sunday", merchandiserName: "Rafiqul Islam Noyan" },
+
+  // Asif Uddin
+  { accountName: "Shwapno", outletCode: "F575", outletName: "Miabari Road Kuril", territoryName: "Rampura 1", routeName: "Kuril", visitDay: "Sunday", merchandiserName: "Asif Uddin" },
+  { accountName: "Shwapno", outletCode: "SHW-BAS-01", outletName: "Bashundhara G Block", territoryName: "Bashundhara 1", routeName: "Bashundhara", visitDay: "Monday", merchandiserName: "Asif Uddin" },
+  { accountName: "Shwapno", outletCode: "SHW-BAS-02", outletName: "Bashundhara Gate", territoryName: "Bashundhara 1", routeName: "Bashundhara", visitDay: "Tuesday", merchandiserName: "Asif Uddin" },
+
+  // Ripon Hossain
+  { accountName: "Shwapno", outletCode: "SHW-UTT-06", outletName: "Uttara 6", territoryName: "Uttara 1", routeName: "Uttara", visitDay: "Thursday", merchandiserName: "Ripon Hossain" },
+  { accountName: "Shwapno", outletCode: "F652", outletName: "Atipara Bazar Uttar Khan", territoryName: "Uttara 2", routeName: "Uttarkhan", visitDay: "Sunday", merchandiserName: "Ripon Hossain" },
+  { accountName: "Shwapno", outletCode: "SHW-UTT-01", outletName: "Court Bari", territoryName: "Uttara 1", routeName: "Uttara", visitDay: "Friday", merchandiserName: "Ripon Hossain" },
+
+  // Jannatul Ferdous
+  { accountName: "Shwapno", outletCode: "SHW-UTT-11", outletName: "Uttara-11", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Saturday", merchandiserName: "Jannatul Ferdous" },
+  { accountName: "Shwapno", outletCode: "F687", outletName: "Road-17 Uttara 11", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Sunday", merchandiserName: "Jannatul Ferdous" },
+  { accountName: "Shwapno", outletCode: "SHW-UTT-10", outletName: "Uttara 10 Outlet", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Tuesday", merchandiserName: "Jannatul Ferdous" },
+
+  // Khadizatul Sathi
+  { accountName: "Shwapno", outletCode: "D092", outletName: "Uttara-3", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Saturday", merchandiserName: "Khadizatul Sathi" },
+  { accountName: "Shwapno", outletCode: "F705", outletName: "Parker Mor Uttara 13", territoryName: "Uttara 4", routeName: "Uttara", visitDay: "Monday", merchandiserName: "Khadizatul Sathi" },
+  { accountName: "Shwapno", outletCode: "F481", outletName: "Sector 12, Road-3", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Tuesday", merchandiserName: "Khadizatul Sathi" },
+
+  // Umme Hani Sonia
+  { accountName: "Shwapno", outletCode: "SHW-ZIG-01", outletName: "Zigatola", territoryName: "Zigatola 1", routeName: "Zigatola", visitDay: "Thursday", merchandiserName: "Umme Hani Sonia" },
+  { accountName: "Shwapno", outletCode: "D112", outletName: "Dhanmondi Satmosid Road", territoryName: "Zigatola 1", routeName: "Dhanmondi", visitDay: "Friday", merchandiserName: "Umme Hani Sonia" },
+  { accountName: "Shwapno", outletCode: "F242", outletName: "Reayerbazar Outlet", territoryName: "Zigatola 1", routeName: "Rayerbazar", visitDay: "Saturday", merchandiserName: "Umme Hani Sonia" },
+
+  // Gias Uddin
+  { accountName: "Shwapno", outletCode: "SHW-GRE-01", outletName: "Panthapath", territoryName: "Green Road 1", routeName: "Panthapath", visitDay: "Wednesday", merchandiserName: "Gias Uddin" },
+  { accountName: "Shwapno", outletCode: "F524", outletName: "Box Culvert Road", territoryName: "Green Road 1", routeName: "Green Road", visitDay: "Thursday", merchandiserName: "Gias Uddin" },
+  { accountName: "Shwapno", outletCode: "SHW-GRE-02", outletName: "Elephant Road", territoryName: "Green Road 1", routeName: "Elephant Road", visitDay: "Friday", merchandiserName: "Gias Uddin" },
+
+  // Md. Rasel
+  { accountName: "Shwapno", outletCode: "SHW-MOG-01", outletName: "Eskaton", territoryName: "Mogbazar 1", routeName: "Mogbazar", visitDay: "Friday", merchandiserName: "Md. Rasel" },
+  { accountName: "Shwapno", outletCode: "F803", outletName: "Shantinagar Outlet", territoryName: "Malibag 1", routeName: "Shantinagar", visitDay: "Monday", merchandiserName: "Md. Rasel" },
+  { accountName: "Shwapno", outletCode: "SHW-MAL-01", outletName: "Malibag Rail Gate", territoryName: "Mogbazar 1", routeName: "Malibag", visitDay: "Saturday", merchandiserName: "Md. Rasel" },
+
+  // Shahrain Hossain Maruf
+  { accountName: "Shwapno", outletCode: "F484", outletName: "Commissioner Road Jurain", territoryName: "CTG Road 1", routeName: "Jurain", visitDay: "Friday", merchandiserName: "Shahrain Hossain Maruf" },
+  { accountName: "Shwapno", outletCode: "D078", outletName: "Hasnabad Outlet, Keranigonj", territoryName: "Old Dhaka 2", routeName: "Keranigonj", visitDay: "Saturday", merchandiserName: "Shahrain Hossain Maruf" },
+  { accountName: "Shwapno", outletCode: "F383", outletName: "Jinjira Keraniganj", territoryName: "Old Dhaka 2", routeName: "Keranigonj", visitDay: "Sunday", merchandiserName: "Shahrain Hossain Maruf" },
+
+  // Md Ismail
+  { accountName: "Shwapno", outletCode: "SHW-SAV-01", outletName: "Savar Cantonment", territoryName: "Savar 1", routeName: "Savar", visitDay: "Friday", merchandiserName: "Md Ismail" },
+  { accountName: "Shwapno", outletCode: "F584", outletName: "Bank Colony Savar", territoryName: "Savar 1", routeName: "Savar", visitDay: "Wednesday", merchandiserName: "Md Ismail" },
+  { accountName: "Shwapno", outletCode: "F182", outletName: "Hemayetpur", territoryName: "Savar 1", routeName: "Savar", visitDay: "Thursday", merchandiserName: "Md Ismail" },
+
+  // Omar Faruk
+  { accountName: "Shwapno", outletCode: "SHW-GAZ-01", outletName: "Tongi College Gate", territoryName: "Gazipur 1", routeName: "Tongi", visitDay: "Tuesday", merchandiserName: "Omar Faruk" },
+  { accountName: "Shwapno", outletCode: "F492", outletName: "Cheragali", territoryName: "Gazipur 1", routeName: "Tongi", visitDay: "Thursday", merchandiserName: "Omar Faruk" },
+  { accountName: "Shwapno", outletCode: "SHW-GAZ-02", outletName: "Auchpara", territoryName: "Gazipur 1", routeName: "Tongi", visitDay: "Friday", merchandiserName: "Omar Faruk" },
+
+  // Nayem Islam
+  { accountName: "Shwapno", outletCode: "SHW-GAZ-03", outletName: "Gazipur Chowrasta", territoryName: "Gazipur 3", routeName: "Gazipur", visitDay: "Wednesday", merchandiserName: "Nayem Islam" },
+  { accountName: "Shwapno", outletCode: "F500", outletName: "Barkat Sarani Joydebpur", territoryName: "Gazipur 3", routeName: "Joydebpur", visitDay: "Saturday", merchandiserName: "Nayem Islam" },
+  { accountName: "Shwapno", outletCode: "F629", outletName: "Jorpukur Joydebpur", territoryName: "Gazipur 3", routeName: "Joydebpur", visitDay: "Thursday", merchandiserName: "Nayem Islam" },
+
+  // Johura Akter Rita
+  { accountName: "Shwapno", outletCode: "SHW-RIN-01", outletName: "Shyamoli", territoryName: "Ring Road 1", routeName: "Ring Road", visitDay: "Saturday", merchandiserName: "Johura Akter Rita" },
+  { accountName: "Shwapno", outletCode: "F089", outletName: "Mohammadia Housing Society", territoryName: "Mohammadpur 1", routeName: "Mohammadpur", visitDay: "Monday", merchandiserName: "Johura Akter Rita" },
+  { accountName: "Shwapno", outletCode: "F710", outletName: "Uttar adabar", territoryName: "Mohammadpur 1", routeName: "Adabar", visitDay: "Tuesday", merchandiserName: "Johura Akter Rita" },
+
+  // Redoy Chandra Das
+  { accountName: "Shwapno", outletCode: "F686", outletName: "Nurjahan Road Mohammadpur", territoryName: "Mohammadpur 1", routeName: "Mohammadpur", visitDay: "Wednesday", merchandiserName: "Redoy Chandra Das" },
+  { accountName: "Shwapno", outletCode: "F180", outletName: "Mohammadpur Bosila", territoryName: "Mohammadpur 1", routeName: "Bosila", visitDay: "Tuesday", merchandiserName: "Redoy Chandra Das" },
+  { accountName: "Shwapno", outletCode: "F515", outletName: "Chandrima Model Town", territoryName: "Mohammadpur 1", routeName: "Mohammadpur", visitDay: "Thursday", merchandiserName: "Redoy Chandra Das" },
+
+  // Shekhe Al Akbor
+  { accountName: "Shwapno", outletCode: "SHW-CTG-01", outletName: "Gopibagh", territoryName: "CTG Road 1", routeName: "Gopibagh", visitDay: "Wednesday", merchandiserName: "Shekhe Al Akbor" },
+  { accountName: "Shwapno", outletCode: "SHW-CTG-02", outletName: "RK Mission Road", territoryName: "CTG Road 1", routeName: "RK Mission", visitDay: "Sunday", merchandiserName: "Shekhe Al Akbor" },
+  { accountName: "Shwapno", outletCode: "F551", outletName: "Maniknagar", territoryName: "CTG Road 1", routeName: "Maniknagar", visitDay: "Monday", merchandiserName: "Shekhe Al Akbor" }
+].sort((a, b) => a.outletName.localeCompare(b.outletName)); // Ascending Order
+
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const maxWidth = 800; 
+        const scaleSize = maxWidth / img.width;
+        canvas.width = maxWidth;
+        canvas.height = img.height * scaleSize;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+      };
+    };
+  });
+};
+
+// --- HELPER TO CONVERT GOOGLE DRIVE LINKS TO DIRECT IMAGE LINKS ---
+const getDirectImageUrl = (url) => {
+  if (!url) return '';
+  // If it's already a base64 image or not a Google Drive link, return as is
+  if (url.startsWith('data:image') || !url.includes('drive.google.com')) return url;
+  
+  // Extract the File ID from the Google Drive URL and convert to a thumbnail link
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+  }
+  return url;
+};
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('selection'); 
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Auth Error:", err); }
+    };
+    initAuth();
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
+    return () => unsubscribeAuth();
+  }, []);
+
+  const handleDashboardAccess = () => setIsPasswordModalOpen(true);
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (passwordInput === '1234') {
+      setIsPasswordModalOpen(false);
+      setPasswordInput('');
+      setPasswordError('');
+      setView('dashboard');
+    } else {
+      setPasswordError('Incorrect password.');
+    }
+  };
+
+  if (view === 'selection') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-red-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-60"></div>
+        <div className="max-w-sm sm:max-w-md w-full relative z-10">
+          <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden border border-white">
+            <div className="bg-gradient-to-br from-red-600 to-red-700 px-8 py-10 text-center relative overflow-hidden">
+              <div className="relative z-10">
+                <h1 className="text-3xl font-black text-white tracking-[0.2em] drop-shadow-md leading-none">COLGATE</h1>
+                <p className="text-red-100 font-bold tracking-[0.3em] text-xs mt-2 opacity-90">PALMOLIVE</p>
+              </div>
             </div>
-            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
-                <div>
-                    <!-- Updated maxlength to 6 for the new pin length -->
-                    <input type="password" id="pin-input" class="w-full text-center text-2xl tracking-[0.5em] font-bold p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0060E5] focus:border-transparent outline-none transition-all" placeholder="••••" maxlength="6" required>
-                </div>
-                <button type="submit" class="w-full py-3 px-4 bg-gradient-to-r from-[#052065] to-[#0060E5] text-white font-bold rounded-lg hover:shadow-lg transform transition hover:-translate-y-0.5">
-                    Unlock Dashboard
+            <div className="p-8 bg-white">
+              <div className="text-center mb-8">
+                <h2 className="text-xl font-extrabold text-slate-800">Modern Trade Portal</h2>
+                <p className="text-sm text-slate-500 mt-1 font-medium">Select your operational workspace</p>
+              </div>
+              <div className="space-y-4">
+                <button onClick={() => setView('merchandiser')} className="w-full flex items-center p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-xl hover:shadow-red-100 hover:border-red-100 transition-all duration-300 group">
+                  <div className="bg-white shadow-sm p-3.5 rounded-xl group-hover:bg-red-50 group-hover:scale-110 transition-all duration-300">
+                    <Package className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div className="ml-4 text-left flex-1">
+                    <h3 className="text-[15px] font-bold text-slate-800 group-hover:text-red-700">Field Execution</h3>
+                    <p className="text-[11px] text-slate-500">Capture visibility & SOS</p>
+                  </div>
+                  <ChevronLeft className="h-5 w-5 text-slate-300 rotate-180 group-hover:text-red-500" />
                 </button>
-                <p id="login-error" class="text-xs text-[#F33131] font-bold hidden">Incorrect PIN. Please try again.</p>
-            </form>
-        </div>
-        <p class="mt-8 text-xs text-gray-400">Restricted Access</p>
-    </div>
-
-    <!-- Flash Notification -->
-    <div id="flash-notification" class="fixed top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-[#052065] text-white px-6 py-4 rounded-b-xl shadow-2xl z-[100] transition-transform duration-700 ease-out flex items-center gap-4 min-w-[300px] border-b-4 border-[#0060E5]">
-        <div class="p-2 bg-[#0060E5] rounded-full">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-        </div>
-        <div>
-            <h3 class="font-bold text-sm uppercase tracking-wider text-gray-200">System Update</h3>
-            <p class="text-sm font-medium">Data Refreshed.</p>
-        </div>
-    </div>
-
-    <!-- Loading Screen -->
-    <div id="loading-overlay">
-        <div class="spinner mb-4"></div>
-        <h2 class="text-xl font-bold text-gray-700">Analyzing Sales Data...</h2>
-        <p class="text-sm text-gray-500">Please wait a moment</p>
-        <p id="error-details" class="text-xs text-[#F33131] mt-2 hidden text-center max-w-md px-4"></p>
-    </div>
-
-    <div id="app" class="max-w-7xl mx-auto" style="display: none;">
-
-        <!-- Header -->
-        <header class="header-gradient p-6 rounded-xl shadow-xl mb-4 flex flex-col items-start border border-gray-200 animate-fade-in-up">
-            <div class="mb-0">
-                <h1 class="text-3xl sm:text-4xl font-extrabold text-white">SPARTA MTD Sales Performance</h1>
-                <p id="data-date" class="text-lg text-gray-200 mt-1">(Data as of ...)</p>
+                <button onClick={handleDashboardAccess} className="w-full flex items-center p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-xl hover:shadow-slate-200 hover:border-slate-200 transition-all duration-300 group">
+                  <div className="bg-white shadow-sm p-3.5 rounded-xl group-hover:bg-slate-800 group-hover:scale-110 transition-all duration-300">
+                    <LayoutDashboard className="h-6 w-6 text-slate-700 group-hover:text-white" />
+                  </div>
+                  <div className="ml-4 text-left flex-1">
+                    <h3 className="text-[15px] font-bold text-slate-800 group-hover:text-slate-900">Audit Desk</h3>
+                    <p className="text-[11px] text-slate-500">Review & analyze data</p>
+                  </div>
+                  <Lock className="h-4 w-4 text-slate-300 group-hover:text-slate-600" />
+                </button>
+              </div>
             </div>
-        </header>
-
-        <!-- Sticky Filter Bar -->
-        <div id="sticky-filters" class="sticky top-0 z-50 py-3 -mx-4 sm:-mx-8 px-4 sm:px-8 bg-[#f4f7f9]/90 backdrop-blur-md border-b border-gray-200 shadow-sm mb-6 transition-all duration-300 animate-fade-in-up" style="animation-delay: 0.1s;">
-            <div id="filter-controls" class="flex flex-wrap gap-2 justify-center sm:justify-start">
-                <!-- Dropdowns inserted by JS -->
-            </div>
+          </div>
+          <div className="text-center mt-8">
+            <p className="text-[11px] text-slate-400 font-medium tracking-wide uppercase">© {new Date().getFullYear()} Colgate-Palmolive Company</p>
+          </div>
         </div>
 
-        <!-- KPI Cards -->
-        <div id="kpi-cards" class="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-6"></div>
-
-        <!-- Tab Controls -->
-        <div class="flex justify-center mb-6 z-10 relative animate-fade-in-up" style="animation-delay: 0.2s;">
-            <div class="flex p-1 bg-gray-700/30 rounded-lg shadow-md backdrop-blur-sm transition-all duration-300">
-                <button id="tab-territory" class="tab-button tab-active">Territory Update</button>
-                <button id="tab-db" class="tab-button tab-inactive">DB Update</button>
-                <button id="tab-sr" class="tab-button tab-inactive">DFF Update</button>
-            </div>
-        </div>
-
-        <!-- Visuals Panel 1: Main -->
-        <div id="visuals-panel-main" style="display: grid;" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 animate-fade-in">
-
-            <!-- Performance Status -->
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">Performance Status (DB & SR)</h2>
-                <p class="text-sm text-gray-500 mb-4">No. of performers Above 90%, 85-90%, and Below 85% of Time elapsed %.</p>
-                <div id="sr-health" class="mb-6 border-b pb-4 border-gray-100"></div>
-                <div id="db-health"></div>
-            </div>
-
-            <!-- Chart Section -->
-            <div class="lg:col-span-2">
-                <div id="territory-chart-container" style="display: block;" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Territory STT Achievement vs. Target</h2>
-                    <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span> (Ranked by Achievement)</p>
-                    <div id="stt-chart" class="space-y-4"></div>
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
+              <div className="flex justify-center mb-4">
+                <div className="bg-slate-100 p-4 rounded-full text-slate-700">
+                  <Lock className="h-7 w-7" />
                 </div>
-
-                <div id="db-chart-container" style="display: none;" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">DB STT Achievement vs. Target (Aggregated)</h2>
-                    <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span> (Ranked by Achievement)</p>
-                    <div id="db-stt-chart" class="space-y-4"></div>
+              </div>
+              <h3 className="text-xl font-black text-center text-slate-900 mb-2">Admin Access</h3>
+              <p className="text-sm text-center text-slate-500 mb-6">Enter password to unlock dashboard. (Password: 1234)</p>
+              <form onSubmit={handlePasswordSubmit}>
+                <div className="mb-5">
+                  <div className="relative">
+                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <input type="password" autoFocus className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Enter password" value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(''); }} />
+                  </div>
+                  {passwordError && <p className="text-red-500 text-xs mt-2 font-bold ml-1">{passwordError}</p>}
                 </div>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="flex-1 py-3.5 bg-slate-100 text-slate-700 font-bold rounded-xl transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 py-3.5 bg-slate-800 text-white font-bold rounded-xl transition-all">Unlock</button>
+                </div>
+              </form>
             </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
-            <!-- Combo Chart -->
-            <div id="combo-chart-section" class="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
-                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-4 gap-4">
-                    <div class="mb-2 xl:mb-0">
-                        <h2 class="text-xl font-bold text-gray-800">Daily Sales vs. ERC Trend</h2>
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      <nav className="bg-white shadow-sm border-b border-red-100 px-4 py-3 flex items-center sticky top-0 z-50">
+        <div className="flex items-center space-x-3">
+          <button onClick={() => setView('selection')} className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-red-50">
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest leading-none">Colgate-Palmolive</span>
+            <h1 className="text-lg font-bold text-slate-800 leading-tight">
+              {view === 'merchandiser' ? 'MT Outlet Capture' : 'Audit Desk'}
+            </h1>
+          </div>
+        </div>
+      </nav>
+      {view === 'merchandiser' ? <MerchandiserApp user={user} /> : <DashboardApp user={user} />}
+    </div>
+  );
+}
+
+// ==========================================
+// MERCHANDISER APP (MOBILE OPTIMIZED)
+// ==========================================
+function MerchandiserApp({ user }) {
+  const [merchandiser, setMerchandiser] = useState('');
+  const [visitDay, setVisitDay] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [route, setRoute] = useState('');
+  const [outletCode, setOutletCode] = useState('');
+  
+  const [totalShelf, setTotalShelf] = useState('');
+  const [colgateShelf, setColgateShelf] = useState('');
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Cascading logic arrays (All alphabetically sorted) - USING HARDCODED OUTLET_MASTER
+  const merchandisers = useMemo(() => [...new Set(OUTLET_MASTER.map(o => o.merchandiserName?.trim()).filter(Boolean))].sort(), []);
+  const visitDays = useMemo(() => merchandiser ? [...new Set(OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser).map(o => o.visitDay?.trim()).filter(Boolean))].sort() : [], [merchandiser]);
+  const accounts = useMemo(() => visitDay ? [...new Set(OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay).map(o => o.accountName?.trim()).filter(Boolean))].sort() : [], [merchandiser, visitDay]);
+  const routes = useMemo(() => accountName ? [...new Set(OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay && o.accountName?.trim() === accountName).map(o => o.routeName?.trim()).filter(Boolean))].sort() : [], [merchandiser, visitDay, accountName]);
+  const outlets = useMemo(() => route ? OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay && o.accountName?.trim() === accountName && o.routeName?.trim() === route) : [], [merchandiser, visitDay, accountName, route]);
+  
+  // Selected outlet full details
+  const selectedOutletDetails = useMemo(() => OUTLET_MASTER.find(o => o.outletCode === outletCode), [outletCode]);
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+      const compressedBase64 = await compressImage(file);
+      setImage(compressedBase64);
+      setErrorMsg('');
+    }
+  };
+
+  const clearImage = (e) => {
+    e.preventDefault(); 
+    setPreview(null);
+    setImage(null);
+    const fileInput = document.getElementById('camera-input');
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isUploading) return; 
+    if (!merchandiser || !visitDay || !accountName || !route || !outletCode || !selectedOutletDetails) { setErrorMsg("Please select complete outlet details."); return; }
+    if (totalShelf === '' || colgateShelf === '') { setErrorMsg("Please enter shelf metrics."); return; }
+    if (Number(colgateShelf) > Number(totalShelf)) { setErrorMsg("Colgate shelves cannot exceed total shelves."); return; }
+    if (!image) { setErrorMsg("Photo is required."); return; }
+    
+    setIsUploading(true);
+    try {
+      // 1. Prepare the payload
+      const payload = {
+        userId: user.uid,
+        accountName: selectedOutletDetails.accountName,
+        outletCode: selectedOutletDetails.outletCode,
+        outletName: selectedOutletDetails.outletName,
+        territoryName: selectedOutletDetails.territoryName,
+        routeName: selectedOutletDetails.routeName,
+        visitDay: selectedOutletDetails.visitDay,
+        merchandiserName: selectedOutletDetails.merchandiserName,
+        totalShelf: Number(totalShelf), 
+        colgateShelf: Number(colgateShelf),
+        imageUrl: image,
+        status: 'Pending Audit', 
+        timestamp: Date.now(),
+        dateString: new Date().toISOString().split('T')[0]
+      };
+
+      // 2. Save locally to Firebase Database as a reliable backup
+      const visitsRef = collection(db, 'artifacts', appId, 'public', 'data', 'mt_visits');
+      await addDoc(visitsRef, payload);
+
+      // 3. Push to Google Sheets via Apps Script Web App
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors', // Required to bypass CORS block for Google Apps Script
+          redirect: 'follow', // Ensure it follows Google's internal redirects
+          headers: {
+            'Content-Type': 'text/plain', // Use text/plain for no-cors to prevent preflight block
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (sheetError) {
+        console.error("Failed to sync to Google Sheets, but saved to DB:", sheetError);
+        // We log the error but do not block the success message since the core DB save worked
+      }
+
+      setSuccessMsg('Uploaded successfully!');
+      setTimeout(() => {
+        setSuccessMsg(''); 
+        setOutletCode(''); // Reset outlet, keep upper selections for next store
+        setTotalShelf(''); setColgateShelf('');
+        setImage(null); setPreview(null);
+      }, 3000);
+    } catch (err) { setErrorMsg("Sync failed."); }
+    setIsUploading(false);
+  };
+
+  return (
+    <div className="max-w-md mx-auto bg-white min-h-[calc(100vh-60px)] shadow-xl border-x border-gray-100 pb-8">
+      {/* Hero Banner Section */}
+      <div className="relative h-44 w-full bg-slate-900 rounded-b-3xl overflow-hidden mb-6 shadow-md">
+        <img 
+          src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+          className="w-full h-full object-cover opacity-90" 
+          alt="Modern Trade Supermarket" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+        <div className="absolute bottom-5 left-6 right-6">
+          <p className="text-red-400 font-bold text-[10px] uppercase tracking-widest mb-1 flex items-center">
+            <Store className="w-3 h-3 mr-1" /> Field Execution
+          </p>
+          <h2 className="text-2xl font-black text-white tracking-wide">Record Visibility</h2>
+        </div>
+      </div>
+
+      <div className="px-6">
+        {successMsg && <div className="mb-4 p-4 bg-green-50 text-green-800 rounded-xl font-bold">{successMsg}</div>}
+        {errorMsg && <div className="mb-4 p-4 bg-red-50 text-red-800 rounded-xl font-bold">{errorMsg}</div>}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Step 1: Explicit Form Inputs for Location */}
+          <div>
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
+              <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 1: Outlet Details
+            </h3>
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
+              
+              {/* Selectable Inputs */}
+              <div className="space-y-1">
+                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Merchandiser Name</label>
+                 <select className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={merchandiser} onChange={(e) => { setMerchandiser(e.target.value); setVisitDay(''); setAccountName(''); setRoute(''); setOutletCode(''); }} required>
+                   <option value="">Select Merchandiser</option>
+                   {merchandisers.length === 0 && <option disabled>⚠️ No Merchandisers Found</option>}
+                   {merchandisers.map(m => <option key={m} value={m}>{m}</option>)}
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Visit Day</label>
+                 <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={visitDay} onChange={(e) => { setVisitDay(e.target.value); setAccountName(''); setRoute(''); setOutletCode(''); }} disabled={!merchandiser} required>
+                   <option value="">Select Visit Day</option>
+                   {visitDays.map(v => <option key={v} value={v}>{v}</option>)}
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Account Name</label>
+                 <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={accountName} onChange={(e) => { setAccountName(e.target.value); setRoute(''); setOutletCode(''); }} disabled={!visitDay} required>
+                   <option value="">Select Account</option>
+                   {accounts.map(a => <option key={a} value={a}>{a}</option>)}
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Route Name</label>
+                 <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={route} onChange={(e) => { setRoute(e.target.value); setOutletCode(''); }} disabled={!accountName} required>
+                   <option value="">Select Route</option>
+                   {routes.map(r => <option key={r} value={r}>{r}</option>)}
+                 </select>
+              </div>
+
+              <div className="space-y-1">
+                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Outlet Name</label>
+                 <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-slate-800" value={outletCode} onChange={(e) => setOutletCode(e.target.value)} disabled={!route} required>
+                   <option value="">Select Outlet</option>
+                   {outlets.map(o => <option key={o.outletCode} value={o.outletCode}>{o.outletName}</option>)}
+                 </select>
+              </div>
+
+              {/* Explicit Read-Only Inputs to show full data capture */}
+              {selectedOutletDetails && (
+                 <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200 animate-in fade-in">
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Outlet Code</label>
+                       <input type="text" readOnly value={selectedOutletDetails.outletCode} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 outline-none" />
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full xl:w-auto">
-                         <!-- DFF Filter Container -->
-                        <div id="dff-filter-container" class="w-auto"></div>
-                        <!-- Trend Buttons -->
-                        <div class="flex flex-wrap gap-2" id="trend-buttons">
-                            <button class="trend-btn active" data-filter="MTD">MTD</button>
-                            <button class="trend-btn" data-filter="L3D">L3D</button>
-                            <button class="trend-btn" data-filter="W1">W1</button>
-                            <button class="trend-btn" data-filter="W2">W2</button>
-                            <button class="trend-btn" data-filter="W3">W3</button>
-                            <button class="trend-btn" data-filter="W4">W4</button>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Territory Name</label>
+                       <input type="text" readOnly value={selectedOutletDetails.territoryName} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 outline-none" />
+                    </div>
+                 </div>
+              )}
+            </div>
+          </div>
+        
+          {/* Step 2: Shelf Metrics */}
+          <div>
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
+              <Package className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 2: Shelf Share
+            </h3>
+            <div className="flex space-x-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
+               <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Total Category</label>
+                  <input type="number" min="0" required className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-slate-700" placeholder="e.g. 10" value={totalShelf} onChange={e => setTotalShelf(e.target.value)} />
+               </div>
+               <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wider">Colgate Shelves</label>
+                  <input type="number" min="0" required className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-red-600" placeholder="e.g. 4" value={colgateShelf} onChange={e => setColgateShelf(e.target.value)} />
+               </div>
+            </div>
+          </div>
+
+          {/* Step 3: Image Capture */}
+          <div>
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
+              <Camera className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 3: Execution Photo
+            </h3>
+            <div className="relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-32 flex justify-center items-center overflow-hidden hover:bg-slate-100 transition-colors group shadow-sm">
+              {preview ? (
+                <>
+                  <img src={preview} className="w-full h-full object-cover" alt="Preview" />
+                  <button 
+                    onClick={clearImage} 
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-sm text-white rounded-full hover:bg-red-600 transition-all z-10 shadow-sm"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <div className="p-3 bg-white rounded-full shadow-sm border border-slate-100">
+                       <Camera className="h-6 w-6 text-red-600" />
+                    </div>
+                    <span className="font-bold text-slate-500 text-sm">Snap Execution</span>
+                  </div>
+                  <input id="camera-input" type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer z-0" required />
+                </>
+              )}
+            </div>
+          </div>
+
+          <button type="submit" disabled={isUploading} className="w-full py-4 rounded-xl text-white font-bold text-lg bg-red-600 shadow-lg shadow-red-200 hover:bg-red-700 hover:shadow-xl hover:-translate-y-0.5 transition-all active:translate-y-0 active:shadow-md">{isUploading ? 'Syncing...' : 'Submit Execution'}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// AUDITOR DASHBOARD (WEB OPTIMIZED)
+// ==========================================
+function DashboardApp({ user }) {
+  const [visits, setVisits] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterDate, setFilterDate] = useState(''); 
+  
+  const [filterMerchandiser, setFilterMerchandiser] = useState('All'); // NEW Merchandiser Filter
+  const [filterTerritory, setFilterTerritory] = useState('All');
+  const [filterRoute, setFilterRoute] = useState('All');
+  const [filterAccount, setFilterAccount] = useState('All');
+  const [filterOutlet, setFilterOutlet] = useState('All'); // Outlet Code
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  // Derived filter arrays for Dashboard dropdowns - USING HARDCODED OUTLET_MASTER
+  const dashboardMerchandisers = useMemo(() => [...new Set(OUTLET_MASTER.map(o => o.merchandiserName?.trim()).filter(Boolean))].sort(), []);
+  const dashboardTerritories = useMemo(() => [...new Set(OUTLET_MASTER.map(o => o.territoryName?.trim()).filter(Boolean))].sort(), []);
+  const dashboardRoutes = useMemo(() => filterTerritory !== 'All' ? [...new Set(OUTLET_MASTER.filter(o => o.territoryName?.trim() === filterTerritory).map(o => o.routeName?.trim()).filter(Boolean))].sort() : [], [filterTerritory]);
+  const dashboardAccounts = useMemo(() => filterRoute !== 'All' ? [...new Set(OUTLET_MASTER.filter(o => o.routeName?.trim() === filterRoute).map(o => o.accountName?.trim()).filter(Boolean))].sort() : [], [filterRoute]);
+  const dashboardOutlets = useMemo(() => filterAccount !== 'All' ? OUTLET_MASTER.filter(o => o.accountName?.trim() === filterAccount && o.routeName?.trim() === filterRoute) : [], [filterAccount, filterRoute]);
+
+  // --- FETCH DATA FROM GOOGLE SHEETS ---
+  useEffect(() => {
+    const fetchFromSheets = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        const data = await response.json();
+        setVisits(data);
+      } catch (err) {
+        console.error("Failed to fetch from Google Sheets:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFromSheets();
+  }, []);
+
+  // --- KPI Calculation Logic Linked to Master Data ---
+  const currentHierarchyCodes = useMemo(() => {
+    let list = OUTLET_MASTER;
+    if (filterMerchandiser !== 'All') list = list.filter(o => o.merchandiserName?.trim() === filterMerchandiser);
+    if (filterTerritory !== 'All') list = list.filter(o => o.territoryName?.trim() === filterTerritory);
+    if (filterRoute !== 'All') list = list.filter(o => o.routeName?.trim() === filterRoute);
+    if (filterAccount !== 'All') list = list.filter(o => o.accountName?.trim() === filterAccount);
+    if (filterOutlet !== 'All') list = list.filter(o => o.outletCode?.trim() === filterOutlet);
+    return list.map(o => o.outletCode);
+  }, [filterMerchandiser, filterTerritory, filterRoute, filterAccount, filterOutlet]);
+
+  const baseFilteredData = useMemo(() => {
+    // 1. First, sanitize the incoming sheet data so filters work properly
+    let filtered = visits.map(v => {
+      const d = new Date(v.timestamp);
+      const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      
+      // Handle legacy status mapping automatically
+      let s = (v.status || 'Pending Audit').trim();
+      if (s === 'Compliant' || s === 'Passed') s = 'Planogram Compliant';
+      if (s === 'Need Intervention' || s === 'Failed') s = 'Non Compliant';
+
+      return {
+        ...v,
+        status: s, 
+        merchandiserName: (v.merchandiserName || '').trim(), // Clean up incoming name
+        derivedDateString: localDateStr
+      };
+    });
+
+    // 2. Apply filters
+    if (filterDate) filtered = filtered.filter(v => v.derivedDateString === filterDate);
+    if (filterMerchandiser !== 'All') filtered = filtered.filter(v => v.merchandiserName === filterMerchandiser);
+    if (filterTerritory !== 'All') filtered = filtered.filter(v => v.territoryName?.trim() === filterTerritory);
+    if (filterRoute !== 'All') filtered = filtered.filter(v => v.routeName?.trim() === filterRoute);
+    if (filterAccount !== 'All') filtered = filtered.filter(v => v.accountName?.trim() === filterAccount);
+    if (filterOutlet !== 'All') filtered = filtered.filter(v => v.outletCode?.trim() === filterOutlet);
+    
+    if (searchTerm.trim()) {
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(v => 
+        (v.outletName && v.outletName.toLowerCase().includes(lowerSearch)) || 
+        (v.outletCode && v.outletCode.toLowerCase().includes(lowerSearch)) ||
+        (v.merchandiserName && v.merchandiserName.toLowerCase().includes(lowerSearch))
+      );
+    }
+    return filtered;
+  }, [visits, filterDate, filterMerchandiser, filterTerritory, filterRoute, filterAccount, filterOutlet, searchTerm]);
+
+  const statusCounts = useMemo(() => {
+    const counts = { 'All': baseFilteredData.length, 'Pending Audit': 0, 'Planogram Compliant': 0, 'Improvement Outlet': 0, 'Non Compliant': 0 };
+    baseFilteredData.forEach(v => {
+      if (counts[v.status] !== undefined) counts[v.status]++;
+    });
+    return counts;
+  }, [baseFilteredData]);
+
+  // NEW: Flattened table data instead of grouped data
+  const tableData = useMemo(() => {
+    let finalData = baseFilteredData;
+    if (filterStatus !== 'All') finalData = finalData.filter(v => v.status === filterStatus);
+    
+    // Sort all records chronologically (newest first)
+    return finalData.sort((a, b) => b.timestamp - a.timestamp).map(v => {
+      // DUMMY DATA GENERATION FOR PREVIEW (Safe to remove when connecting to real Sheet columns)
+      // Generates a consistent fake percentage based on the outlet code so it doesn't jump around
+      const hash = v.outletCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const mom = (hash % 11) - 5; // Random between -5 and +5
+      const ytd = (hash % 21) - 5; // Random between -5 and +15
+      
+      return {
+        ...v,
+        momGrowth: v.momGrowth !== undefined ? v.momGrowth : (mom * 2), // Fake e.g., -10%, +6%, etc.
+        ytdGrowth: v.ytdGrowth !== undefined ? v.ytdGrowth : (ytd * 2), 
+      };
+    });
+  }, [baseFilteredData, filterStatus]);
+
+  const updateAuditStatus = async (id, status, visitData) => {
+    if(!user) return;
+    try {
+      // 1. Optimistically update UI so it feels instant
+      setVisits(prevVisits => prevVisits.map(v => v.id === id ? { ...v, status } : v));
+      
+      // 2. Send update to Google Sheets silently in the background
+      if (visitData) {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'updateStatus',
+            outletCode: visitData.outletCode,
+            merchandiserName: visitData.merchandiserName,
+            status: status
+          })
+        });
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const getStatusBadge = (status) => {
+    if(status === 'Planogram Compliant') return <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-green-500 text-white rounded">Planogram Compliant</span>;
+    if(status === 'Improvement Outlet') return <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-yellow-400 text-yellow-900 rounded">Improvement</span>;
+    if(status === 'Non Compliant') return <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-red-600 text-white rounded">Non Compliant</span>;
+    return <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-slate-200 text-slate-600 rounded">Pending Audit</span>;
+  };
+
+  const renderGrowth = (val) => {
+    if (val === undefined || val === null || val === '') return <span className="text-slate-300">-</span>;
+    const num = parseFloat(val);
+    if (isNaN(num)) return <span className="text-slate-500 text-xs font-bold">{val}</span>;
+    if (num > 0) return <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 text-[11px] font-bold inline-flex items-center"><TrendingUp className="w-3 h-3 mr-1" />+{num}%</span>;
+    if (num < 0) return <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100 text-[11px] font-bold inline-flex items-center"><TrendingDown className="w-3 h-3 mr-1" />{num}%</span>;
+    return <span className="text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-[11px] font-bold inline-flex items-center">0%</span>;
+  };
+
+  // Overall visits for the selected hierarchy (ignoring date filter for KPIs)
+  const kpiVisits = useMemo(() => {
+    return visits
+      .map(v => {
+         let s = (v.status || 'Pending Audit').trim();
+         if(s === 'Compliant' || s === 'Passed') s = 'Planogram Compliant';
+         if(s === 'Need Intervention' || s === 'Failed') s = 'Non Compliant';
+         return {...v, status: s};
+      })
+      .filter(v => currentHierarchyCodes.includes(v.outletCode));
+  }, [visits, currentHierarchyCodes]);
+
+  const stats = useMemo(() => {
+    const covered = new Set(kpiVisits.map(v => v.outletCode)).size;
+    const audited = kpiVisits.filter(v => v.status !== 'Pending Audit').length;
+    const passed = kpiVisits.filter(v => v.status === 'Planogram Compliant').length;
+    return {
+      coverage: covered,
+      totalOutlets: currentHierarchyCodes.length,
+      audited,
+      totalVisits: kpiVisits.length,
+      passRate: audited > 0 ? Math.round((passed/audited)*100) : 0
+    };
+  }, [kpiVisits, currentHierarchyCodes]);
+
+  const handleExport = () => {
+    const headers = ['Date', 'Time', 'Account Name', 'Outlet Code', 'Outlet Name', 'Territory Name', 'Route Name', 'Visit Day', 'Merchandiser Name', 'Total Shelves', 'Colgate Shelves', 'Share of Shelf %', 'Status', 'Image Link'];
+    
+    let exportData = baseFilteredData;
+    if (filterStatus !== 'All') exportData = exportData.filter(v => v.status === filterStatus);
+
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(v => {
+        const d = new Date(v.timestamp);
+        return [
+          `"${d.toLocaleDateString()}"`,
+          `"${d.toLocaleTimeString()}"`,
+          `"${v.accountName || ''}"`,
+          `"${v.outletCode || ''}"`,
+          `"${v.outletName || ''}"`,
+          `"${v.territoryName || ''}"`,
+          `"${v.routeName || ''}"`,
+          `"${v.visitDay || ''}"`,
+          `"${v.merchandiserName || ''}"`,
+          `"${v.totalShelf !== undefined ? v.totalShelf : ''}"`,
+          `"${v.colgateShelf !== undefined ? v.colgateShelf : ''}"`,
+          `"${v.totalShelf ? Math.round((v.colgateShelf / v.totalShelf) * 100) + '%' : '0%'}"`,
+          `"${v.status || ''}"`,
+          `"${v.imageUrl || ''}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `MT_Audit_Report_${filterDate || 'All'}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] w-full">
+         <Loader2 className="h-12 w-12 text-red-600 animate-spin mb-4" />
+         <h3 className="text-slate-600 font-bold text-lg">Loading Executions...</h3>
+         <p className="text-slate-400 font-medium text-sm mt-1">Fetching live data from Google Sheets</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4">
+      
+      {/* COMPACT KPI CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Coverage Card */}
+        <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
+           <div className="flex items-center gap-3">
+             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Store className="h-5 w-5" /></div>
+             <div>
+               <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Coverage</p>
+               <h3 className="text-xl font-black text-slate-800 leading-none mt-0.5">{stats.coverage} <span className="text-sm text-slate-400 font-bold">/ {stats.totalOutlets}</span></h3>
+             </div>
+           </div>
+           <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">{Math.round((stats.coverage/(stats.totalOutlets || 1))*100)}%</span>
+        </div>
+
+        {/* Audit Pipeline Card */}
+        <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
+           <div className="flex items-center gap-3">
+             <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><ClipboardCheck className="h-5 w-5" /></div>
+             <div>
+               <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Audited</p>
+               <h3 className="text-xl font-black text-slate-800 leading-none mt-0.5">{stats.audited} <span className="text-sm text-slate-400 font-bold">/ {stats.totalVisits}</span></h3>
+             </div>
+           </div>
+           <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">{stats.totalVisits - stats.audited} left</span>
+        </div>
+
+        {/* Quality Score Card */}
+        <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
+           <div className="flex items-center gap-3">
+             <div className="p-2 bg-green-50 text-green-600 rounded-lg"><Target className="h-5 w-5" /></div>
+             <div>
+               <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Compliance</p>
+               <h3 className="text-xl font-black text-slate-800 leading-none mt-0.5">{stats.passRate}%</h3>
+             </div>
+           </div>
+           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${stats.passRate > 80 ? 'bg-green-100 text-green-700' : stats.passRate > 50 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+             {stats.passRate > 80 ? 'Excellent' : stats.passRate > 50 ? 'Good' : 'Review'}
+           </span>
+        </div>
+      </div>
+
+      {/* COMPACT CONTROL PANEL */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-col gap-3">
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row gap-2 items-center">
+           <div className="w-full sm:w-auto bg-slate-100 px-3 py-1.5 rounded-lg flex items-center shrink-0">
+             <Filter className="h-3.5 w-3.5 mr-1.5 text-red-600" />
+             <span className="text-xs font-bold text-slate-700">Filters</span>
+           </div>
+           <div className="relative w-full sm:w-40">
+              <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input type="date" className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-bold outline-none focus:border-red-300 transition-all" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+           </div>
+           <div className="relative flex-1 w-full">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input type="text" placeholder="Search by Outlet Name, Code, or Merchandiser..." className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs outline-none focus:border-red-300 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+           </div>
+           <button onClick={handleExport} className="w-full sm:w-auto bg-slate-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center hover:bg-slate-900 transition-all">
+              <Download className="h-3.5 w-3.5 mr-1.5" /> Export
+           </button>
+        </div>
+
+        {/* Hierarchy Grid Section (Expanded to 5 columns for Merchandiser Filter) */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all appearance-none cursor-pointer" value={filterMerchandiser} onChange={e => setFilterMerchandiser(e.target.value)}>
+            <option value="All">All Merchandisers</option>
+            {dashboardMerchandisers.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all appearance-none cursor-pointer" value={filterTerritory} onChange={e => { setFilterTerritory(e.target.value); setFilterRoute('All'); setFilterAccount('All'); setFilterOutlet('All'); }}>
+            <option value="All">All Territories</option>
+            {dashboardTerritories.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all disabled:opacity-50 appearance-none cursor-pointer" value={filterRoute} onChange={e => { setFilterRoute(e.target.value); setFilterAccount('All'); setFilterOutlet('All'); }} disabled={filterTerritory === 'All'}>
+            <option value="All">All Routes</option>
+            {dashboardRoutes.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all disabled:opacity-50 appearance-none cursor-pointer" value={filterAccount} onChange={e => { setFilterAccount(e.target.value); setFilterOutlet('All'); }} disabled={filterRoute === 'All'}>
+            <option value="All">All Accounts</option>
+            {dashboardAccounts.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all disabled:opacity-50 appearance-none cursor-pointer" value={filterOutlet} onChange={e => setFilterOutlet(e.target.value)} disabled={filterAccount === 'All'}>
+            <option value="All">All Outlets</option>
+            {dashboardOutlets.map(o => <option key={o.outletCode} value={o.outletCode}>[{o.outletCode}] {o.outletName}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* STATUS QUICK TABS */}
+      <div className="flex flex-wrap gap-2 items-center">
+         <button onClick={() => setFilterStatus('All')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'All' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>All Images ({statusCounts['All']})</button>
+         <button onClick={() => setFilterStatus('Pending Audit')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Pending Audit' ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}>Pending ({statusCounts['Pending Audit']})</button>
+         <button onClick={() => setFilterStatus('Planogram Compliant')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Planogram Compliant' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-slate-500 border border-slate-200 hover:bg-green-50 hover:text-green-600'}`}>Planogram Compliant ({statusCounts['Planogram Compliant']})</button>
+         <button onClick={() => setFilterStatus('Improvement Outlet')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Improvement Outlet' ? 'bg-yellow-400 text-yellow-900 border-yellow-400' : 'bg-white text-slate-500 border border-slate-200 hover:bg-yellow-50 hover:text-yellow-700'}`}>Improvement Outlet ({statusCounts['Improvement Outlet']})</button>
+         <button onClick={() => setFilterStatus('Non Compliant')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Non Compliant' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-500 border border-slate-200 hover:bg-red-50 hover:text-red-600'}`}>Non Compliant ({statusCounts['Non Compliant']})</button>
+      </div>
+
+      {/* CONTENT LIST */}
+      {tableData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center bg-white rounded-3xl border border-slate-200 shadow-sm w-full">
+           <Search className="h-16 w-16 text-slate-200 mb-4" />
+           <h3 className="text-slate-600 font-black text-lg">No executions found</h3>
+           <p className="text-slate-400 font-medium text-sm mt-1">Try adjusting your filters to see more data.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-widest">
+                  <th className="p-4 font-bold w-20">Photo</th>
+                  <th className="p-4 font-bold">Outlet Details</th>
+                  <th className="p-4 font-bold">Merchandiser & Time</th>
+                  <th className="p-4 font-bold text-center">SOS %</th>
+                  <th className="p-4 font-bold text-center">MoM Grw</th>
+                  <th className="p-4 font-bold text-center">YTD Grw</th>
+                  <th className="p-4 font-bold">Status</th>
+                  <th className="p-4 font-bold text-right pr-6">Audit Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {tableData.map(p => (
+                  <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="p-4">
+                      <div 
+                        className="w-16 h-16 rounded-xl overflow-hidden cursor-pointer border border-slate-200 shadow-sm relative"
+                        onClick={() => setPreviewPhoto(p)}
+                      >
+                        <img src={getDirectImageUrl(p.imageUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="Thumbnail" />
+                        <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors flex items-center justify-center">
+                           <Maximize2 className="text-white w-5 h-5 opacity-0 group-hover:opacity-100 drop-shadow-md" />
                         </div>
-                    </div>
-                </div>
-                <div class="relative h-80 md:h-96">
-                    <canvas id="comboChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Visuals Panel 2: SR View -->
-        <div id="visuals-panel-sr" style="display: none;" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 animate-fade-in">
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">Top 10 DFF Nationally (by STT Ach %)</h2>
-                <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span></p>
-                <div id="top-10-sr-chart" class="space-y-4"></div>
-            </div>
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">Bottom 10 DFF Nationally (by STT Ach %)</h2>
-                <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span></p>
-                <div id="bottom-10-sr-chart" class="space-y-4"></div>
-            </div>
-        </div>
-
-        <!-- Tables -->
-        <div id="tab-panels">
-            <div id="panel-territory" style="display: block;" class="animate-fade-in">
-                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed Territory Performance MTD</h2>
-                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">Territory</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="territory-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
-                </div>
-            </div>
-            
-            <div id="panel-db" style="display: none;" class="animate-fade-in">
-                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DB Performance MTD (Aggregated)</h2>
-                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DB Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="db-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
-                </div>
-            </div>
-
-            <div id="panel-sr" style="display: none;" class="animate-fade-in">
-                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DFF Performance MTD</h2>
-                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DFF Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="sr-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
-                </div>
-            </div>
-            
-            <div id="panel-db" style="display: none;" class="animate-fade-in">
-                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DB Performance MTD (Aggregated)</h2>
-                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DB Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="db-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
-                </div>
-            </div>
-
-            <div id="panel-sr" style="display: none;" class="animate-fade-in">
-                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DFF Performance MTD</h2>
-                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DFF Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="sr-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Disable Right Click
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        Chart.register(ChartDataLabels);
-        Chart.defaults.animation.duration = 1000;
-        Chart.defaults.animation.easing = 'easeOutQuart';
-
-        // --- SECURITY SETTINGS (Base64 Obfuscated) ---
-        // PIN is Base64 encoded
-        const SECURE_PIN = "MTA5NjAw"; 
-        
-        // Obfuscated Data Sources
-        const SECURE_SRC_1 = "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvZS8yUEFDWC0xdlNXM2UwSGdvdG40Y3JGSzFhYzJvc3l0bkZ0N2phV2xWU1Y1YTFCVVJLLTN6TFVfUTktTHhieVR1Q0NNTGE0dGJPMy05bkxodHRkay0xdi9wdWI/b3V0cHV0PWNzdg==";
-        const SECURE_SRC_2 = "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvZS8yUEFDWC0xdlNXM2UwSGdvdG40Y3JGSzFhYzJvc3l0bkZ0N2phV2xWU1Y1YTFCVVJLLTN6TFVfUTktTHhieVR1Q0NNTGE0dGJPMy05bkxodHRkay0xdi9wdWI/Z2lkPTU3MzE0Mjc4NyZzaW5nbGU9dHJ1ZSZvdXRwdXQ9Y3N2";
-
-        // Variables
-        let timeElapsedPercent = 0; 
-        let daysPassed = "";
-        let totalWorkingDaysInMonth = 26; 
-        const LAC_DIVISOR = 100000;
-        
-        let selectedFilters = { 'Area': 'All Areas', 'Territory': 'All Territories', 'DB Name': 'All DBs', 'DFF Name': 'All DFFs' };
-        let activeTab = 'territory';
-        let activeTrendFilter = 'MTD';
-        
-        let areaSelect, territorySelect, dbNameSelect, dffNameSelect;
-        let comboChartInstance = null;
-
-        let rawSrData = [];
-        let dailyRawData = [];
-        let processedTerritoryData = [];
-        let processedDbData = [];
-
-        // --- LOGIN LOGIC ---
-        function handleLogin(e) {
-            e.preventDefault();
-            const input = document.getElementById('pin-input');
-            const errorMsg = document.getElementById('login-error');
-            
-            // Encode input to Base64 and compare with stored hash
-            if (btoa(input.value) === SECURE_PIN) {
-                // Correct Password
-                document.getElementById('login-screen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('login-screen').style.display = 'none';
-                    // Show loading and start app
-                    document.getElementById('loading-overlay').style.display = 'flex';
-                    initDashboard();
-                    initializeTabs();
-                    initializeTrendButtons();
-                    showFlashMessage();
-                }, 500);
-            } else {
-                // Wrong Password
-                errorMsg.classList.remove('hidden');
-                input.value = '';
-                input.focus();
-                // Shake effect
-                const box = document.querySelector('#login-screen > div');
-                box.animate([
-                    { transform: 'translateX(0)' },
-                    { transform: 'translateX(-10px)' },
-                    { transform: 'translateX(10px)' },
-                    { transform: 'translateX(0)' }
-                ], { duration: 300 });
-            }
-        }
-
-        // --- HELPER FUNCTIONS ---
-        function parseNumeric(value) {
-            if (typeof value === 'number') return value;
-            if (typeof value === 'string') {
-                if (value.toLowerCase().includes('k')) {
-                    const number = parseFloat(value.toLowerCase().replace('k', '').replace(/,/g, ''));
-                    return isNaN(number) ? 0 : number * 1000; 
-                }
-                const cleanedValue = value.replace(/,/g, '').replace(/%/g, '');
-                const number = parseFloat(cleanedValue);
-                return isNaN(number) ? 0 : number;
-            }
-            return 0;
-        }
-
-        function countWorkingDays(year, month, limitDay) {
-            let count = 0;
-            for(let d = 1; d <= limitDay; d++) {
-                const dayOfWeek = new Date(year, month, d).getDay();
-                if(dayOfWeek !== 5) count++; 
-            }
-            return count;
-        }
-
-        function calculatePercentages(data) {
-            data.sttAchPercent = (data.sttTgt > 0) ? (data.sttAch / data.sttTgt) * 100 : 0;
-            data.ercAchPercent = (data.ercTgt > 0) ? (data.ercAch / data.ercTgt) * 100 : 0;
-            data.sfTbrAchPercent = (data.sfTbrTgt > 0) ? (data.sfTbrAch / data.sfTbrTgt) * 100 : 0;
-            data.premiumSkuAchPercent = (data.premiumSkuGoal > 0) ? (data.premiumSkuAch / data.premiumSkuGoal) * 100 : 0;
-            // Updated: TDP 1 Ach % is now calculated against STT TGT
-            data.tdp1AchPercent = (data.sttTgt > 0) ? (data.tdp1Ach / data.sttTgt) * 100 : 0;
-            return data;
-        }
-
-        function getRAGStatus(percentage) {
-            const benchmarkHigh = timeElapsedPercent * 0.90;
-            const benchmarkLow = timeElapsedPercent * 0.85;
-            if (percentage >= benchmarkHigh) return { color: 'fill-green', text: 'Green', ring: 'ring-green', textColor: 'text-green' };
-            else if (percentage >= benchmarkLow) return { color: 'fill-amber', text: 'Amber', ring: 'ring-amber', textColor: 'text-amber' };
-            else return { color: 'fill-red', text: 'Red', ring: 'ring-red', textColor: 'text-red' };
-        }
-
-        function formatInLac(amount) {
-            return (amount / LAC_DIVISOR).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        function formatCount(amount) {
-            return Math.round(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
-        }
-        
-        function formatValue(value, unit) {
-            return unit === "Lac" ? formatInLac(value) : formatCount(value);
-        }
-
-        function calculateGrandTotals(dataArray) {
-            const totals = {
-                sttTgt: 0, sttAch: 0, ercTgt: 0, ercAch: 0, 
-                sfTbrTgt: 0, sfTbrAch: 0, premiumSkuGoal: 0, premiumSkuAch: 0,
-                tdp1Tgt: 0, tdp1Ach: 0
-            };
-            dataArray.forEach(data => {
-                for (const key in totals) {
-                    const val = parseNumeric(data[key]);
-                    if (!isNaN(val)) totals[key] += val;
-                }
-            });
-            totals.sttAchPercent = (totals.sttTgt > 0) ? (totals.sttAch / totals.sttTgt) * 100 : 0;
-            totals.ercAchPercent = (totals.ercTgt > 0) ? (totals.ercAch / totals.ercTgt) * 100 : 0;
-            totals.sfTbrAchPercent = (totals.sfTbrTgt > 0) ? (totals.sfTbrAch / totals.sfTbrTgt) * 100 : 0;
-            totals.premiumSkuAchPercent = (totals.premiumSkuGoal > 0) ? (totals.premiumSkuAch / totals.premiumSkuGoal) * 100 : 0;
-            // Updated: Grand Total TDP 1 Ach % uses STT TGT
-            totals.tdp1AchPercent = (totals.sttTgt > 0) ? (totals.tdp1Ach / totals.sttTgt) * 100 : 0;
-            return totals;
-        }
-
-        async function fetchCsvData(url) {
-            const timestampedUrl = `${url}&t=${Date.now()}`;
-            try {
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(timestampedUrl)}`;
-                const response = await fetch(proxyUrl);
-                if (response.ok) {
-                    const jsonData = await response.json();
-                    if (jsonData.contents) return parseCsv(jsonData.contents);
-                }
-            } catch (e) { console.warn("AllOrigins JSON failed", e); }
-            try {
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(timestampedUrl)}`;
-                const response = await fetch(proxyUrl);
-                if (response.ok) return parseCsv(await response.text());
-            } catch (e) { console.warn("CorsProxy failed", e); }
-            try {
-                const response = await fetch(timestampedUrl);
-                if (response.ok) return parseCsv(await response.text());
-            } catch (e) { console.error("Direct fetch failed", e); }
-            throw new Error("Unable to fetch data.");
-        }
-
-        function parseCsv(csvText) {
-            return new Promise((resolve) => {
-                Papa.parse(csvText, { header: true, skipEmptyLines: true, complete: (results) => resolve(results) });
-            });
-        }
-
-        async function initDashboard() {
-            try {
-                // Decode obfuscated URLs
-                const mtdUrl = atob(SECURE_SRC_1);
-                const chartUrl = atob(SECURE_SRC_2);
-
-                const [mtdResult, chartResult] = await Promise.all([ fetchCsvData(mtdUrl), fetchCsvData(chartUrl) ]);
-                const mtdData = mtdResult.data;
-                const mtdHeaders = mtdResult.meta.fields; 
-                const chartData = chartResult.data;
-                const headerP = mtdHeaders[15]; 
-                const headerQ = mtdHeaders[16]; 
-                const headerR = mtdHeaders[17]; 
-                const tmTgtMap = { "MESBA RAHMAN": 1400, "FARHAN MORSHED KHAN": 700, "NURUL ALAM": 500, "RAYHAN MASUD": 400, "NOOR MD. HABIBULLAH": 1000, "MONIRUZZAMAN MONIR": 380, "SHAHREAR AHMED": 620 };
-
-                rawSrData = mtdData.map(sr => ({
-                    area: (sr['AREA'] || sr['Area'] || '').trim(),
-                    territory: (sr['TERRITORY'] || sr['Territory'] || '').trim(),
-                    tm: (sr['TM'] || '').trim(),
-                    lead: sr['LEAD'],
-                    dhCode: (sr['DH CODE'] || sr['DH Code'] || '').toString().trim(), 
-                    dhName: (sr['DH NAME'] || sr['DH Name'] || '').trim(),
-                    dffCode: (sr['DFF CODE'] || sr['DFF Code'] || '').toString().trim(),
-                    dffName: (sr['DFF NAME'] || sr['DFF Name'] || '').trim(),
-                    sttTgt: parseNumeric(sr['STT TGT']),
-                    sttAch: parseNumeric(sr['MTD ACH']),
-                    ercTgt: parseNumeric(sr['ERC TGT']),
-                    ercAch: parseNumeric(sr['ERC ACH']),
-                    sfTbrTgt: 0,
-                    sfTbrAch: parseNumeric(sr[headerP]), 
-                    premiumSkuGoal: parseNumeric(sr[headerQ]),
-                    premiumSkuAch: parseNumeric(sr[headerR]),
-                    tdp1Tgt: parseNumeric(sr['TDP 1 TGT'] || sr['TDP TGT'] || 0), 
-                    tdp1Ach: 0 
-                }));
-
-                const dffCodeToName = {};
-                rawSrData.forEach(sr => { if (sr.dffCode) dffCodeToName[sr.dffCode.toString().trim()] = sr.dffName; });
-
-                dailyRawData = chartData.map(row => {
-                    const code = (row['SALESREP_CODE'] || row['DFF_CODE'] || row['CODE'] || '').toString().trim();
-                    let finalName = (row['SALESREP_NAME'] || row['DFF_NAME'] || row['NAME'] || '').trim();
-                    if (code && dffCodeToName[code]) finalName = dffCodeToName[code];
-
-                    return {
-                        calday: row['CALDAY'],
-                        sales: parseNumeric(row['SALES']),
-                        erc: parseNumeric(row['ERC']),
-                        // TDP 1 Mapping removed as value comes from SALES aggregation
-                        AREA: (row['AREA'] || row['Area'] || '').trim(),
-                        TERRITORY: (row['TERRITORY'] || row['Territory'] || '').trim(),
-                        DISTRIBUTOR_NAME: (row['DISTRIBUTOR_NAME'] || row['Distributor Name'] || row['DB_NAME'] || row['DB Name'] || '').trim(),
-                        DFF_NAME: finalName
-                    };
-                });
-
-                // --- AGGREGATE TDP 1 ACH FROM DAILY DATA (SALES 1-10) ---
-                const dffTdpMap = new Map();
-                dailyRawData.forEach(row => {
-                    const key = row.DFF_NAME;
-                    if (!dffTdpMap.has(key)) dffTdpMap.set(key, 0);
-                    
-                    const d = new Date(row.calday);
-                    if (!isNaN(d.getTime())) {
-                        const day = d.getDate();
-                        // Filter: Days 1 to 10 ONLY
-                        if (day >= 1 && day <= 10) {
-                            // User Instruction: "value ise SALES column"
-                            dffTdpMap.set(key, dffTdpMap.get(key) + row.sales);
-                        }
-                    }
-                });
-
-                // Merge aggregated TDP into rawSrData
-                rawSrData.forEach(sr => {
-                    if (dffTdpMap.has(sr.dffName)) {
-                        sr.tdp1Ach = dffTdpMap.get(sr.dffName);
-                    }
-                });
-
-                let maxDate = new Date();
-                if (dailyRawData.length > 0) {
-                    const sortedDates = dailyRawData.map(r => new Date(r.calday)).filter(d => !isNaN(d.getTime())).sort((a,b) => b - a);
-                    if (sortedDates.length > 0) maxDate = sortedDates[0];
-                }
-
-                const day = maxDate.getDate();
-                const monthName = maxDate.toLocaleString('default', { month: 'short' });
-                const suffix = (d) => { if (d > 3 && d < 21) return 'th'; switch (d % 10) { case 1: return "st"; case 2: return "nd"; case 3: return "rd"; default: return "th"; } };
-                document.getElementById('data-date').innerText = `(Data as of ${monthName} ${day}${suffix(day)})`;
-
-                if (day >= 22) activeTrendFilter = 'W4'; else if (day >= 15) activeTrendFilter = 'W3'; else if (day >= 8) activeTrendFilter = 'W2'; else activeTrendFilter = 'W1';
-                document.querySelectorAll('.trend-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === activeTrendFilter) btn.classList.add('active');
-                });
-
-                const currentYear = maxDate.getFullYear();
-                const currentMonth = maxDate.getMonth();
-                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-                const passed = countWorkingDays(currentYear, currentMonth, day);
-                const total = countWorkingDays(currentYear, currentMonth, daysInMonth);
-                
-                totalWorkingDaysInMonth = total;
-                daysPassed = `${passed} out of ${total}`;
-                timeElapsedPercent = (total > 0) ? (passed / total) * 100 : 0;
-                document.querySelectorAll('.benchmark-text').forEach(el => el.textContent = `${timeElapsedPercent.toFixed(2)}%`);
-
-                preProcessData(tmTgtMap);
-                initializeFilters();
-                applyFilters(); 
-                document.getElementById('loading-overlay').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                document.querySelector('#loading-overlay h2').innerText = "Connection Failed";
-                document.querySelector('#loading-overlay p').innerText = "Failed to load data.";
-                document.getElementById('error-details').innerText = error.message;
-                document.getElementById('error-details').classList.remove('hidden');
-            }
-        }
-
-        function preProcessData(tmTgtMap = {}) {
-            const nationallySortedSrs = [...rawSrData].map(item => calculatePercentages(item)).sort((a, b) => b.sttAchPercent - a.sttAchPercent);
-            nationallySortedSrs.forEach((sr, index) => { sr.nationalRank = index + 1; });
-            
-            const territoryMap = new Map();
-            rawSrData.forEach(sr => {
-                const key = sr.territory;
-                if (!territoryMap.has(key)) {
-                    territoryMap.set(key, {
-                        territory: sr.territory, tm: sr.tm, area: sr.area,
-                        sttTgt: 0, sttAch: 0, ercTgt: 0, ercAch: 0,
-                        sfTbrTgt: 0, sfTbrAch: 0, premiumSkuGoal: 0, premiumSkuAch: 0,
-                        tdp1Tgt: 0, tdp1Ach: 0
-                    });
-                }
-                const t = territoryMap.get(key);
-                t.sttTgt += sr.sttTgt; t.sttAch += sr.sttAch;
-                t.ercTgt += sr.ercTgt; t.ercAch += sr.ercAch;
-                t.sfTbrAch += sr.sfTbrAch;
-                t.premiumSkuGoal += sr.premiumSkuGoal; t.premiumSkuAch += sr.premiumSkuAch;
-                t.tdp1Tgt += sr.tdp1Tgt; t.tdp1Ach += sr.tdp1Ach;
-            });
-            
-            territoryMap.forEach((val, key) => {
-                if (tmTgtMap[val.tm] !== undefined) val.sfTbrTgt = tmTgtMap[val.tm];
-                else val.sfTbrTgt = 0;
-            });
-
-            const dbMap = new Map();
-            rawSrData.forEach(sr => {
-                const key = sr.dhName;
-                if (!dbMap.has(key)) {
-                    dbMap.set(key, {
-                        dhName: sr.dhName, area: sr.area, territory: sr.territory,
-                        sttTgt: 0, sttAch: 0, ercTgt: 0, ercAch: 0,
-                        sfTbrTgt: 0, sfTbrAch: 0, premiumSkuGoal: 0, premiumSkuAch: 0,
-                        tdp1Tgt: 0, tdp1Ach: 0
-                    });
-                }
-                const db = dbMap.get(key);
-                db.sttTgt += sr.sttTgt; db.sttAch += sr.sttAch;
-                db.ercTgt += sr.ercTgt; db.ercAch += sr.ercAch;
-                db.sfTbrTgt = 0; 
-                db.sfTbrAch += sr.sfTbrAch;
-                db.premiumSkuGoal += sr.premiumSkuGoal; db.premiumSkuAch += sr.premiumSkuAch;
-                db.tdp1Tgt += sr.tdp1Tgt; db.tdp1Ach += sr.tdp1Ach;
-            });
-
-            processedTerritoryData = Array.from(territoryMap.values()).map(item => calculatePercentages(item));
-            processedDbData = Array.from(dbMap.values()).map(item => calculatePercentages(item));
-        }
-
-        function getAggregatedDailyData() {
-            const aggMap = new Map();
-            const filteredDailyData = dailyRawData.filter(row => {
-                const matchArea = selectedFilters.Area === 'All Areas' || row.AREA === selectedFilters.Area;
-                const matchTerritory = selectedFilters.Territory === 'All Territories' || row.TERRITORY === selectedFilters.Territory;
-                const matchDb = selectedFilters['DB Name'] === 'All DBs' || row.DISTRIBUTOR_NAME === selectedFilters['DB Name'];
-                const isDffActive = selectedFilters['DFF Name'] !== 'All DFFs' && selectedFilters['DFF Name'] !== 'Select DB Name First';
-                const matchDff = !isDffActive || row.DFF_NAME === selectedFilters['DFF Name'];
-                return matchArea && matchTerritory && matchDb && matchDff;
-            });
-
-            filteredDailyData.forEach(row => {
-                const dateObj = new Date(row.calday);
-                const dateKey = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }); 
-                const rawDate = row.calday;
-                if (!aggMap.has(rawDate)) aggMap.set(rawDate, { date: rawDate, label: dateKey, sales: 0, erc: 0 });
-                const entry = aggMap.get(rawDate);
-                entry.sales += row.sales;
-                entry.erc += row.erc;
-            });
-
-            return Array.from(aggMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date)).map(d => ({ dateObj: new Date(d.date), label: d.label, sales: d.sales / LAC_DIVISOR, erc: d.erc }));
-        }
-
-        function filterTrendData(data, filterType) {
-            if (filterType === 'L3D') return data.slice(-3);
-            if (filterType === 'W1') return data.filter(d => d.dateObj.getDate() >= 1 && d.dateObj.getDate() <= 7);
-            if (filterType === 'W2') return data.filter(d => d.dateObj.getDate() >= 8 && d.dateObj.getDate() <= 14);
-            if (filterType === 'W3') return data.filter(d => d.dateObj.getDate() >= 15 && d.dateObj.getDate() <= 21);
-            if (filterType === 'W4') return data.filter(d => d.dateObj.getDate() >= 22);
-            return data;
-        }
-
-        function populateDateWiseChart(ratio = 1, filterType = 'MTD', totalTarget = 0) {
-            const ctx = document.getElementById('comboChart');
-            if (!ctx) return; 
-            
-            let chartDataRaw = getAggregatedDailyData();
-            let runningSales = 0;
-            let workingDaysPassed = 0;
-            const totalTargetInLac = totalTarget / LAC_DIVISOR;
-
-            chartDataRaw.forEach(d => {
-                const isFriday = d.dateObj.getDay() === 5;
-                const isWorkingDay = !isFriday;
-                const remainingDays = Math.max(1, totalWorkingDaysInMonth - workingDaysPassed);
-                let dailyRR = 0;
-                if (isWorkingDay) dailyRR = Math.max(0, (totalTargetInLac - runningSales) / remainingDays);
-                d.dynamicRR = dailyRR;
-                runningSales += d.sales; 
-                if (isWorkingDay) workingDaysPassed++;
-            });
-
-            chartDataRaw = filterTrendData(chartDataRaw, filterType);
-            const labels = chartDataRaw.map(d => `${d.label} (${d.dateObj.toLocaleDateString('en-US', { weekday: 'short' })})`);
-            const barBackgroundColors = chartDataRaw.map(d => d.dateObj.getDay() === 5 ? 'rgba(243, 49, 49, 0.8)' : 'rgba(0, 96, 229, 0.7)'); 
-            const barBorderColors = chartDataRaw.map(d => d.dateObj.getDay() === 5 ? 'rgba(243, 49, 49, 1)' : 'rgba(0, 96, 229, 1)');
-            
-            const gapData = chartDataRaw.map(d => {
-                if (d.dateObj.getDay() === 5) return 0; 
-                return Math.max(0, d.dynamicRR - d.sales);
-            });
-
-            if (comboChartInstance) comboChartInstance.destroy();
-
-            comboChartInstance = new Chart(ctx, {
-                type: 'bar', 
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'ERC Ach', data: chartDataRaw.map(d => d.erc), type: 'line', borderColor: '#7500A7', backgroundColor: '#7500A7', borderWidth: 3, tension: 0.4, yAxisID: 'y1', order: 0, datalabels: { align: 'top', anchor: 'start', color: '#7500A7', font: { weight: 'bold', size: 11 }, offset: 4 } },
-                        { label: 'Sales (Lac)', data: chartDataRaw.map(d => d.sales), type: 'bar', backgroundColor: barBackgroundColors, borderColor: barBorderColors, borderWidth: 1, borderRadius: 4, yAxisID: 'y', order: 1, stack: 'sttStack', datalabels: { align: 'end', anchor: 'end', color: '#052065', font: { weight: 'bold', size: 10 }, formatter: v => v.toFixed(2) } },
-                        { label: 'RR Gap', data: gapData, type: 'bar', backgroundColor: 'rgba(200, 200, 200, 0.3)', borderColor: 'rgba(200, 200, 200, 0.5)', borderWidth: 1, borderRadius: 4, yAxisID: 'y', order: 2, stack: 'sttStack', datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0.01, align: 'end', anchor: 'end', color: '#F33131', font: { weight: 'bold', size: 10 }, formatter: (val, ctx) => { const rr = chartDataRaw[ctx.dataIndex].dynamicRR.toFixed(2); const gap = val.toFixed(2); return `${rr} (Gap: ${gap})`; }, offset: -2 } }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 }}, animation: { duration: 1000, easing: 'easeOutQuart' }, plugins: { tooltip: { mode: 'index', intersect: false, callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) label += ': '; if (context.dataset.label === 'RR Gap') { const dateRR = chartDataRaw[context.dataIndex].dynamicRR; return `Required RR: ${dateRR.toFixed(2)} (Gap: ${context.raw.toFixed(2)})`; } return label + context.formattedValue; } } }, legend: { position: 'bottom' }, datalabels: { display: true, clip: false } }, scales: { x: { display: true, stacked: true }, y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Sales (Lac)' }, stacked: true }, y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'ERC Ach (Count)' }, grid: { drawOnChartArea: false } } } }
-            });
-        }
-
-        function applyFilters() {
-            let filteredTerritories = [...processedTerritoryData];
-            let filteredDbs = [...processedDbData];
-            let filteredSrs = [...rawSrData];
-
-            if (selectedFilters.Area !== 'All Areas') filteredSrs = filteredSrs.filter(data => data.area === selectedFilters.Area);
-            if (selectedFilters.Territory !== 'All Territories') filteredSrs = filteredSrs.filter(data => data.territory === selectedFilters.Territory);
-            if (selectedFilters['DB Name'] !== 'All DBs') filteredSrs = filteredSrs.filter(data => data.dhName === selectedFilters['DB Name']);
-            if (selectedFilters['DFF Name'] !== 'All DFFs' && selectedFilters['DFF Name'] !== 'Select DB Name First') filteredSrs = filteredSrs.filter(data => data.dffName === selectedFilters['DFF Name']);
-            
-            const activeTerritories = new Set(filteredSrs.map(sr => sr.territory));
-            const activeDbNames = new Set(filteredSrs.map(sr => sr.dhName));
-            
-            filteredTerritories = processedTerritoryData.filter(t => activeTerritories.has(t.territory));
-            filteredDbs = processedDbData.filter(db => activeDbNames.has(db.dhName));
-
-            const totals = calculateGrandTotals(filteredSrs);
-            totals.sfTbrTgt = filteredTerritories.reduce((sum, t) => sum + t.sfTbrTgt, 0);
-            totals.sfTbrAchPercent = (totals.sfTbrTgt > 0) ? (totals.sfTbrAch / totals.sfTbrTgt) * 100 : 0;
-
-            const newKpiData = updateKpiData(totals);
-            populateKpiCards(newKpiData);
-            populateTable('territory-list', filteredTerritories, 'territory', 'tm');
-            populateTable('db-list', filteredDbs, 'dhName', 'territory');
-            populateTable('sr-list', filteredSrs, 'dffName', 'dhName', true); 
-            populateTerritoryChart(filteredTerritories);
-            populateDbChart(filteredDbs);
-            populateTopBottomSrCharts(filteredSrs);
-            updateSrStatus(filteredSrs); 
-            updateDbStatus(filteredDbs); 
-            populateDateWiseChart(1, activeTrendFilter, totals.sttTgt);
-        }
-
-        function initializeTrendButtons() {
-            document.querySelectorAll('.trend-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    activeTrendFilter = btn.getAttribute('data-filter');
-                    let filteredSrs = [...rawSrData];
-                    if (selectedFilters.Area !== 'All Areas') filteredSrs = filteredSrs.filter(d => d.area === selectedFilters.Area);
-                    if (selectedFilters.Territory !== 'All Territories') filteredSrs = filteredSrs.filter(d => d.territory === selectedFilters.Territory);
-                    if (selectedFilters['DB Name'] !== 'All DBs') filteredSrs = filteredSrs.filter(d => d.dhName === selectedFilters['DB Name']);
-                    if (selectedFilters['DFF Name'] !== 'All DFFs') filteredSrs = filteredSrs.filter(d => d.dffName === selectedFilters['DFF Name']);
-                    populateDateWiseChart(1, activeTrendFilter, calculateGrandTotals(filteredSrs).sttTgt);
-                });
-            });
-        }
-
-        function initializeFilters() {
-            const controls = document.getElementById('filter-controls');
-            const dffContainer = document.getElementById('dff-filter-container'); // Get new container
-            controls.innerHTML = '';
-            dffContainer.innerHTML = ''; // Clear it too
-            
-            const areas = [...new Set(rawSrData.map(i => i.area))].sort();
-            const territories = [...new Set(rawSrData.map(i => i.territory))].sort();
-            const dbNames = [...new Set(rawSrData.map(i => i.dhName))].sort();
-            
-            // Updated: Pass false for isDarkBg because filters are now on light sticky bar
-            const areaDrop = createFilterDropdown('Area', ['All Areas', ...areas], false);
-            areaSelect = areaDrop.select;
-            const terrDrop = createFilterDropdown('Territory', ['All Territories', ...territories], false);
-            territorySelect = terrDrop.select;
-            const dbDrop = createFilterDropdown('DB Name', ['All DBs', ...dbNames], false);
-            dbNameSelect = dbDrop.select;
-            
-            const dffDrop = createFilterDropdown('DFF Name', ['Select DB Name First'], false); 
-            dffNameSelect = dffDrop.select;
-            
-            // --- Custom Styling for DFF Filter to match Trend Buttons ---
-            dffDrop.wrapper.querySelector('label').classList.add('hidden');
-            dffDrop.wrapper.classList.remove('w-full', 'sm:w-48'); 
-            dffDrop.wrapper.classList.add('w-32'); 
-            dffNameSelect.classList.remove('py-2', 'px-3', 'border-gray-300', 'rounded-lg', 'shadow-sm');
-            dffNameSelect.classList.add('py-1', 'px-3', 'text-xs', 'h-[26px]', 'border-gray-200', 'rounded-md', 'font-semibold', 'text-gray-600', 'focus:outline-none', 'focus:ring-0'); 
-            dffNameSelect.disabled = true;
-            dffNameSelect.classList.add('opacity-50', 'cursor-not-allowed');
-
-            controls.append(areaDrop.wrapper, terrDrop.wrapper, dbDrop.wrapper);
-            dffContainer.append(dffDrop.wrapper); // Moved DFF filter to chart section container
-        }
-
-        function createFilterDropdown(name, options, isDarkBg = true) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'flex flex-col text-sm w-full sm:w-48'; 
-            const label = document.createElement('label');
-            label.textContent = name;
-            label.className = `text-xs font-semibold mb-1 pl-1 ${isDarkBg ? 'text-gray-200' : 'text-gray-700'}`;
-            const select = document.createElement('select');
-            select.className = 'py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700 bg-white cursor-pointer w-full';
-            options.forEach(opt => { const el = document.createElement('option'); el.value = opt; el.textContent = opt; select.appendChild(el); });
-            select.addEventListener('change', (e) => { selectedFilters[name] = e.target.value; updateDependentFilters(name); applyFilters(); });
-            wrapper.append(label, select);
-            return { wrapper, select };
-        }
-
-        function updateDependentFilters(changed) {
-            let srs = [...rawSrData];
-            if (selectedFilters.Area !== 'All Areas') srs = srs.filter(s => s.area === selectedFilters.Area);
-            if (changed === 'Area') {
-                const terrs = ['All Territories', ...new Set(srs.map(s => s.territory).sort())];
-                updateSelectOptions(territorySelect, terrs, 'Territory');
-            }
-            if (selectedFilters.Territory !== 'All Territories') srs = srs.filter(s => s.territory === selectedFilters.Territory);
-            if (changed === 'Area' || changed === 'Territory') {
-                const dbs = ['All DBs', ...new Set(srs.map(s => s.dhName).sort())];
-                updateSelectOptions(dbNameSelect, dbs, 'DB Name');
-            }
-            if (selectedFilters['DB Name'] !== 'All DBs') srs = srs.filter(s => s.dhName === selectedFilters['DB Name']);
-            if (changed === 'Area' || changed === 'Territory' || changed === 'DB Name') {
-                if (selectedFilters['DB Name'] === 'All DBs') {
-                    updateSelectOptions(dffNameSelect, ['Select DB Name First'], 'DFF Name');
-                    dffNameSelect.disabled = true;
-                    dffNameSelect.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    const dffs = ['All DFFs', ...new Set(srs.map(s => s.dffName).sort())];
-                    updateSelectOptions(dffNameSelect, dffs, 'DFF Name');
-                    dffNameSelect.disabled = false;
-                    dffNameSelect.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-            }
-        }
-
-        function updateSelectOptions(select, options, key) {
-            const current = selectedFilters[key];
-            select.innerHTML = '';
-            options.forEach(opt => { const el = document.createElement('option'); el.value = opt; el.textContent = opt; select.appendChild(el); });
-            select.value = options.includes(current) ? current : options[0];
-            selectedFilters[key] = select.value;
-        }
-
-        function initializeTabs() {
-            const tabs = {
-                'tab-territory': { panel: 'panel-territory', chart: 'territory-chart-container', srPanel: 'visuals-panel-main', dbChart: 'db-chart-container', srVis: 'visuals-panel-sr' },
-                'tab-db': { panel: 'panel-db', chart: 'db-chart-container', srPanel: 'visuals-panel-main', hideChart: 'territory-chart-container', srVis: 'visuals-panel-sr' },
-                'tab-sr': { panel: 'panel-sr', srVis: 'visuals-panel-sr', hideMain: 'visuals-panel-main', hideT: 'panel-territory', hideD: 'panel-db' }
-            };
-            Object.keys(tabs).forEach(tabId => {
-                document.getElementById(tabId).addEventListener('click', () => {
-                    document.querySelectorAll('.tab-button').forEach(b => { b.classList.remove('tab-active'); b.classList.add('tab-inactive'); });
-                    document.getElementById(tabId).classList.add('tab-active');
-                    document.getElementById(tabId).classList.remove('tab-inactive');
-                    ['panel-territory', 'panel-db', 'panel-sr', 'territory-chart-container', 'db-chart-container', 'visuals-panel-main', 'visuals-panel-sr'].forEach(id => { document.getElementById(id).style.display = 'none'; });
-                    if (tabId === 'tab-territory') {
-                        document.getElementById('panel-territory').style.display = 'block';
-                        document.getElementById('territory-chart-container').style.display = 'block';
-                        document.getElementById('visuals-panel-main').style.display = 'grid';
-                    } else if (tabId === 'tab-db') {
-                        document.getElementById('panel-db').style.display = 'block';
-                        document.getElementById('db-chart-container').style.display = 'block';
-                        document.getElementById('visuals-panel-main').style.display = 'grid';
-                    } else {
-                        document.getElementById('panel-sr').style.display = 'block';
-                        document.getElementById('visuals-panel-sr').style.display = 'grid';
-                    }
-                    applyFilters();
-                });
-            });
-        }
-
-        function updateKpiData(totals) {
-            const newKpiData = {
-                timeElapsed: { label: "Time Elapsed", percentage: timeElapsedPercent, valueText: daysPassed + " Working Days Passed", rag: { color: 'fill-blue', border: 'border-blue', text: 'Benchmark', textColor: 'text-blue', ring: 'ring-blue' }, isBenchmark: true },
-                mtdStt: { label: "MTD STT Ach", percentage: totals.sttAchPercent, unit: "Lac", target: totals.sttTgt, achieved: totals.sttAch },
-                mtdErc: { label: "MTD ERC Ach", percentage: totals.ercAchPercent, unit: "Stores", target: totals.ercTgt, achieved: totals.ercAch },
-                sfTbr: { label: "Premium TP ERC", percentage: (totals.sfTbrTgt > 0 ? (totals.sfTbrAch/totals.sfTbrTgt)*100 : 0), unit: "Stores", target: totals.sfTbrTgt, achieved: totals.sfTbrAch },
-                premiumTp: { label: "Premium TP Ach", percentage: totals.premiumSkuAchPercent, unit: "Lac", target: totals.premiumSkuGoal, achieved: totals.premiumSkuAch }
-            };
-            ['mtdStt', 'mtdErc', 'sfTbr', 'premiumTp'].forEach(k => newKpiData[k].rag = getRAGStatus(newKpiData[k].percentage));
-            return newKpiData;
-        }
-
-        function animateValue(obj, start, end, duration, isPercentage = false) {
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                let current = start + (end - start) * easeProgress;
-                if (isPercentage) obj.innerHTML = current.toFixed(2) + '%';
-                else obj.innerHTML = current.toLocaleString('en-US', { maximumFractionDigits: 2 });
-                if (progress < 1) window.requestAnimationFrame(step);
-                else obj.innerHTML = isPercentage ? end.toFixed(2) + '%' : end.toFixed(2) + '%'; 
-            };
-            window.requestAnimationFrame(step);
-        }
-
-        function createKpiCard(kpi, index) {
-            const rag = kpi.rag;
-            let mainValue = kpi.percentage; 
-            let subContent = kpi.isBenchmark ? `<p class="text-sm text-gray-500 mt-2 font-medium">${kpi.valueText}</p>` : '';
-            if (!kpi.isBenchmark) {
-                const bal = kpi.target - kpi.achieved;
-                const diff = kpi.percentage - timeElapsedPercent;
-                const diffHtml = `<div class="flex justify-between items-center text-gray-600"><span class="text-xs font-medium">vs. Time Elapsed:</span><span class="font-bold text-sm ${diff < 0 ? 'text-red-600' : 'text-green-600'}">${diff > 0 ? '+' : ''}${diff.toFixed(2)}%</span></div>`;
-                subContent = `<div class="mt-3 pt-3 border-t border-gray-100 space-y-1 text-sm">${diffHtml}<div class="space-y-1 pt-1 border-t border-gray-100"><div class="flex justify-between text-gray-600"><span class="text-xs">TGT:</span><span class="font-bold text-gray-700">${formatValue(kpi.target, kpi.unit)}</span></div><div class="flex justify-between text-gray-600"><span class="text-xs">Ach:</span><span class="font-bold ${rag.textColor}">${formatValue(kpi.achieved, kpi.unit)}</span></div><div class="flex justify-between text-gray-600"><span class="text-xs">Bal:</span><span class="font-bold ${bal > 0 ? 'text-red-500' : 'text-gray-500'}">${formatValue(bal, kpi.unit)}</span></div></div></div>`;
-            }
-            const delay = index * 100; 
-            return `<div class="bg-white p-6 rounded-xl shadow-xl border border-gray-100 ${kpi.isBenchmark ? 'col-span-2 md:col-span-1' : ''} animate-fade-in-up hover-scale" style="animation-delay: ${delay}ms"><div class="flex items-center justify-between mb-2"><p class="text-sm font-medium text-gray-500">${kpi.label}</p><span class="w-3 h-3 rounded-full ${rag.color.replace('fill-', 'bg-')} ring-2 ring-offset-2 ${rag.ring}"></span></div><div class="text-3xl md:text-4xl font-extrabold mt-1 ${rag.textColor} kpi-value" data-target="${mainValue}">0.00%</div><div class="gauge-meter mt-4 mb-3"><div class="gauge-fill ${rag.color}" style="width: 0%" data-width="${Math.min(100, kpi.percentage).toFixed(2)}%"></div></div>${subContent}</div>`;
-        }
-
-        function populateKpiCards(kpiData) {
-            const container = document.getElementById('kpi-cards');
-            container.innerHTML = '';
-            const keys = ['timeElapsed', 'mtdStt', 'mtdErc', 'sfTbr', 'premiumTp'];
-            keys.forEach((key, index) => { if (kpiData[key]) container.insertAdjacentHTML('beforeend', createKpiCard(kpiData[key], index)); });
-            setTimeout(() => {
-                document.querySelectorAll('.kpi-value').forEach(el => { const target = parseFloat(el.getAttribute('data-target')); animateValue(el, 0, target, 1000, true); });
-                document.querySelectorAll('.gauge-fill').forEach(el => { const width = el.getAttribute('data-width'); el.style.width = width; });
-            }, 100);
-        }
-
-        function populateTable(id, data, nameKey, subKey, isSr = false) {
-            const tbody = document.getElementById(id);
-            const table = tbody.closest('table');
-            if (table.tFoot) table.tFoot.remove();
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
-                // Adjust colspan based on table type to prevent layout breaks
-                const colSpan = isSr ? 13 : 15; 
-                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-4 text-gray-500">No data found.</td></tr>`;
-                return;
-            }
-
-            data.sort((a, b) => b.sttAchPercent - a.sttAchPercent).forEach((row, index) => {
-                const sttC = getRAGStatus(row.sttAchPercent).textColor;
-                const ercC = getRAGStatus(row.ercAchPercent).textColor;
-                const pskuC = getRAGStatus(row.premiumSkuAchPercent).textColor;
-                const sfC = getRAGStatus(row.sfTbrAchPercent).textColor;
-                const tdpC = getRAGStatus(row.tdp1AchPercent).textColor;
-
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50 transition-colors duration-200';
-                tr.style.opacity = '0';
-                tr.style.animation = `fadeInUp 0.3s ease-out forwards`;
-                tr.style.animationDelay = `${index * 0.02}s`; 
-
-                // Conditional PTP ERC Block
-                // If DFF (isSr), show only Ach. Else show TGT, Ach, %.
-                let ptpBlock = '';
-                if (isSr) {
-                    // DFF View: Only Achievement (1 column) matching static HTML
-                    ptpBlock = `<td class="px-3 py-3 text-center text-sm font-medium ${sfC}">${formatCount(row.sfTbrAch)}</td>`;
-                } else {
-                    // Territory/DB View: Target, Achievement, % (3 columns)
-                    ptpBlock = `
-                        <td class="px-3 py-3 text-center text-sm text-gray-500">${formatCount(row.sfTbrTgt)}</td>
-                        <td class="px-3 py-3 text-center text-sm font-medium ${sfC}">${formatCount(row.sfTbrAch)}</td>
-                        <td class="px-3 py-3 text-center text-sm font-bold ${sfC}">${row.sfTbrAchPercent.toFixed(2)}%</td>
-                    `;
-                }
-
-                tr.innerHTML = `
-                    <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white z-10 shadow-sm">${row[nameKey]}<div class="text-xs text-gray-500">${row[subKey] || ''}</div></td>
-                    <td class="px-3 py-3 text-center text-sm text-gray-500">${formatInLac(row.sttTgt)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-medium ${sttC}">${formatInLac(row.sttAch)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-bold ${sttC}">${row.sttAchPercent.toFixed(2)}%</td>
-                    <td class="px-3 py-3 text-center text-sm font-medium ${tdpC}">${formatInLac(row.tdp1Ach)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-bold ${tdpC}">${row.tdp1AchPercent.toFixed(2)}%</td>
-                    <td class="px-3 py-3 text-center text-sm text-gray-500">${formatCount(row.ercTgt)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-medium ${ercC}">${formatCount(row.ercAch)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-bold ${ercC}">${row.ercAchPercent.toFixed(2)}%</td>
-                    ${ptpBlock}
-                    <td class="px-3 py-3 text-center text-sm text-gray-500">${formatInLac(row.premiumSkuGoal)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-medium ${pskuC}">${formatInLac(row.premiumSkuAch)}</td>
-                    <td class="px-3 py-3 text-center text-sm font-bold ${pskuC}">${row.premiumSkuAchPercent.toFixed(2)}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            const t = calculateGrandTotals(data);
-            const foot = document.createElement('tfoot');
-            foot.className = 'bg-gray-100 font-bold border-t-2 border-gray-300 animate-fade-in';
-            
-            // Note: We don't overwrite headers anymore since static HTML is correct for all tables now
-            
-            // Conditional Footer PTP Block
-            let footerPtpBlock = '';
-            if (isSr) {
-                 footerPtpBlock = `<td class="px-3 py-3 text-center text-gray-900">${formatCount(t.sfTbrAch)}</td>`;
-            } else {
-                 footerPtpBlock = `
-                    <td class="px-3 py-3 text-center text-gray-700">${formatCount(t.sfTbrTgt)}</td>
-                    <td class="px-3 py-3 text-center text-gray-900">${formatCount(t.sfTbrAch)}</td>
-                    <td class="px-3 py-3 text-center ${getRAGStatus(t.sfTbrAchPercent).textColor}">${t.sfTbrAchPercent.toFixed(2)}%</td>
-                 `;
-            }
-
-            foot.innerHTML = `<tr>
-                <td class="px-3 py-3 sticky left-0 bg-gray-100 z-10">GRAND TOTAL</td>
-                <td class="px-3 py-3 text-center text-gray-700">${formatInLac(t.sttTgt)}</td>
-                <td class="px-3 py-3 text-center text-gray-900">${formatInLac(t.sttAch)}</td>
-                <td class="px-3 py-3 text-center ${getRAGStatus(t.sttAchPercent).textColor}">${t.sttAchPercent.toFixed(2)}%</td>
-                <td class="px-3 py-3 text-center text-gray-900">${formatInLac(t.tdp1Ach)}</td>
-                <td class="px-3 py-3 text-center ${getRAGStatus(t.tdp1AchPercent).textColor}">${t.tdp1AchPercent.toFixed(2)}%</td>
-                <td class="px-3 py-3 text-center text-gray-700">${formatCount(t.ercTgt)}</td>
-                <td class="px-3 py-3 text-center text-gray-900">${formatCount(t.ercAch)}</td>
-                <td class="px-3 py-3 text-center ${getRAGStatus(t.ercAchPercent).textColor}">${t.ercAchPercent.toFixed(2)}%</td>
-                ${footerPtpBlock}
-                <td class="px-3 py-3 text-center text-gray-700">${formatInLac(t.premiumSkuGoal)}</td>
-                <td class="px-3 py-3 text-center text-gray-900">${formatInLac(t.premiumSkuAch)}</td>
-                <td class="px-3 py-3 text-center ${getRAGStatus(t.premiumSkuAchPercent).textColor}">${t.premiumSkuAchPercent.toFixed(2)}%</td>
-            </tr>`;
-            table.appendChild(foot);
-        }
-
-        function createBarChart(containerId, dataArray, labelKey, subKey, isBottom = false) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            if (dataArray.length === 0) { container.innerHTML = '<div class="text-center py-8 text-gray-500">No data</div>'; return; }
-
-            let sortedData = [...dataArray];
-            if (isBottom) sortedData.sort((a,b) => a.sttAchPercent - b.sttAchPercent);
-            else sortedData.sort((a,b) => b.sttAchPercent - a.sttAchPercent);
-
-            sortedData.forEach((d, i) => {
-                const rag = getRAGStatus(d.sttAchPercent);
-                const width = Math.min(100, d.sttAchPercent).toFixed(2);
-                const gap = d.sttAchPercent - timeElapsedPercent;
-                const rank = d.displayRank || (i + 1);
-
-                const item = document.createElement('div');
-                item.className = 'flex items-center text-sm animate-fade-in-up';
-                item.style.animationDelay = `${i * 0.05}s`; 
-
-                item.innerHTML = `
-                    <div class="w-1/4 truncate mr-4">
-                        <div class="font-bold text-gray-900 truncate">#${rank} ${d[labelKey]}</div>
-                        <div class="text-xs text-gray-500 truncate">${d[subKey] || ''}</div>
-                    </div>
-                    <div class="w-3/4 bg-gray-200 rounded-full h-8 flex items-center relative overflow-hidden">
-                        <div class="absolute h-full w-[2px] bg-[#0060E5] border-l border-dashed border-[#0060E5] z-20" style="left: ${timeElapsedPercent}%"></div>
-                        <div class="bar-fill h-full rounded-full flex items-center justify-end pr-2 text-white font-bold text-xs ${rag.color} z-10" style="width: 0%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);" data-width="${width}%">
-                            ${d.sttAchPercent > 15 ? d.sttAchPercent.toFixed(1) + '%' : ''}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <p className="text-sm font-black text-slate-800 truncate max-w-[200px] sm:max-w-xs">{p.outletName}</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">{p.accountName} • <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-bold">{p.outletCode}</span></p>
+                    </td>
+                    <td className="p-4">
+                      <p className="text-sm font-bold text-slate-700 flex items-center"><User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />{p.merchandiserName}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 flex items-center"><Clock className="w-3 h-3 mr-1" />{new Date(p.timestamp).toLocaleDateString()} {new Date(p.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    </td>
+                    <td className="p-4 text-center">
+                      {(p.totalShelf !== undefined && p.totalShelf > 0) ? (
+                        <div className="inline-flex flex-col items-center">
+                          <span className="text-xs font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+                            {Math.round((p.colgateShelf / p.totalShelf) * 100)}%
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-medium mt-0.5">{p.colgateShelf}/{p.totalShelf}</span>
                         </div>
-                        <span class="absolute right-2 text-xs font-bold ${gap >= 0 ? 'text-[#008848]' : 'text-[#F33131]'} z-30">GAP: ${gap > 0 ? '+' : ''}${gap.toFixed(2)}%</span>
-                         ${d.sttAchPercent <= 15 ? `<span class="absolute left-2 text-xs font-bold ${rag.textColor} z-30">${d.sttAchPercent.toFixed(1)}%</span>` : ''}
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      {renderGrowth(p.momGrowth)}
+                    </td>
+                    <td className="p-4 text-center">
+                      {renderGrowth(p.ytdGrowth)}
+                    </td>
+                    <td className="p-4">
+                      {getStatusBadge(p.status)}
+                    </td>
+                    <td className="p-4 text-right pr-6">
+                      <div className="flex justify-end space-x-2">
+                         <button 
+                           onClick={() => updateAuditStatus(p.id, 'Planogram Compliant', p)} 
+                           title="Planogram Compliant"
+                           className={`p-2 rounded-xl transition-all ${p.status === 'Planogram Compliant' ? 'bg-green-500 text-white shadow-md shadow-green-200' : 'bg-white border border-slate-200 text-slate-400 hover:bg-green-50 hover:text-green-600 hover:border-green-200'}`}
+                         >
+                           <Check className="h-4 w-4" />
+                         </button>
+                         <button 
+                           onClick={() => updateAuditStatus(p.id, 'Improvement Outlet', p)} 
+                           title="Improvement Outlet"
+                           className={`p-2 rounded-xl transition-all ${p.status === 'Improvement Outlet' ? 'bg-yellow-400 text-yellow-900 shadow-md shadow-yellow-200 border-yellow-400' : 'bg-white border border-slate-200 text-slate-400 hover:bg-yellow-50 hover:text-yellow-600 hover:border-yellow-200'}`}
+                         >
+                           <AlertCircle className="h-4 w-4" />
+                         </button>
+                         <button 
+                           onClick={() => updateAuditStatus(p.id, 'Non Compliant', p)} 
+                           title="Non Compliant"
+                           className={`p-2 rounded-xl transition-all ${p.status === 'Non Compliant' ? 'bg-red-600 text-white shadow-md shadow-red-200' : 'bg-white border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200'}`}
+                         >
+                           <X className="h-4 w-4" />
+                         </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* PREVIEW MODAL */}
+      {previewPhoto && (
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-4 sm:p-8" onClick={() => setPreviewPhoto(null)}>
+           <div className="max-w-5xl w-full flex flex-col h-[90vh] shadow-2xl" onClick={e => e.stopPropagation()}>
+              
+              {/* Modal Header */}
+              <div className="bg-slate-900 border-b border-white/10 p-5 rounded-t-3xl flex justify-between items-center">
+                 <div>
+                    <div className="flex items-center gap-2">
+                       <h3 className="text-white font-black text-xl">{previewPhoto.outletName}</h3>
+                       <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-white border border-white/20">{previewPhoto.outletCode}</span>
                     </div>
-                `;
-                container.appendChild(item);
-            });
+                    <p className="text-slate-400 text-xs mt-1 font-medium flex items-center"><MapPin className="w-3 h-3 mr-1"/> {previewPhoto.territoryName} • {previewPhoto.routeName} • {previewPhoto.accountName}</p>
+                 </div>
+                 <button onClick={() => setPreviewPhoto(null)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+              </div>
 
-            setTimeout(() => {
-                container.querySelectorAll('.bar-fill').forEach(el => { el.style.width = el.getAttribute('data-width'); });
-            }, 50);
-        }
+              {/* Modal Image Body */}
+              <div className="flex-1 bg-black/50 overflow-hidden flex items-center justify-center border-x border-white/5 relative">
+                 {/* APPLY DIRECT IMAGE URL HELPER HERE */}
+                 <img src={getDirectImageUrl(previewPhoto.imageUrl)} className="max-h-full max-w-full object-contain" alt="Preview Full" />
+                 <div className="absolute top-4 left-4 scale-110 shadow-lg">{getStatusBadge(previewPhoto.status)}</div>
+                 
+                 {(previewPhoto.totalShelf !== undefined) && (
+                   <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-slate-800 text-xs font-black shadow-lg border border-white/50 flex flex-col items-center">
+                     <span className="text-[9px] uppercase text-slate-500 tracking-widest mb-0.5">Share of Shelf</span>
+                     <span className="text-red-600 text-lg">{Math.round((previewPhoto.colgateShelf / previewPhoto.totalShelf) * 100)}%</span>
+                     <span className="text-[9px] text-slate-400 mt-0.5">{previewPhoto.colgateShelf} / {previewPhoto.totalShelf} Shelves</span>
+                   </div>
+                 )}
 
-        function populateTerritoryChart(data) { createBarChart('stt-chart', data, 'territory', 'tm'); }
-        function populateDbChart(data) { createBarChart('db-stt-chart', data, 'dhName', 'territory'); }
-        function populateTopBottomSrCharts(data) {
-            const sorted = [...data].sort((a,b) => b.sttAchPercent - a.sttAchPercent);
-            sorted.forEach((d, i) => d.displayRank = i + 1);
-            createBarChart('top-10-sr-chart', sorted.slice(0, 10), 'dffName', 'dhName');
-            createBarChart('bottom-10-sr-chart', sorted.slice(-10), 'dffName', 'dhName', true);
-        }
+                 <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-xl text-white text-xs font-bold border border-white/10 flex items-center shadow-lg">
+                    <Clock className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                    {new Date(previewPhoto.timestamp).toLocaleString()}
+                 </div>
+              </div>
 
-        function updateSrStatus(data) {
-            const status = { green: 0, amber: 0, red: 0, total: data.length };
-            data.forEach(d => {
-                const s = getRAGStatus(d.sttAchPercent).text;
-                if(s==='Green') status.green++; else if(s==='Amber') status.amber++; else status.red++;
-            });
-            renderHealthBar('sr-health', 'DFF', status);
-        }
+              {/* Modal Audit Action Footer */}
+              <div className="bg-slate-900 border-t border-white/10 p-5 rounded-b-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                 <div className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center">
+                    <Target className="w-4 h-4 mr-2 text-slate-500" /> Audit Decision
+                 </div>
+                 <div className="flex gap-3 w-full sm:w-auto">
+                    <button 
+                      onClick={() => { updateAuditStatus(previewPhoto.id, 'Non Compliant', previewPhoto); setPreviewPhoto({...previewPhoto, status: 'Non Compliant'}); }} 
+                      className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-3 rounded-xl transition-all font-bold text-sm border ${previewPhoto.status === 'Non Compliant' ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-900/50' : 'bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10'}`}
+                    >
+                      <XCircle className="w-4 h-4 mr-1.5" /> Non Compliant
+                    </button>
+                    <button 
+                      onClick={() => { updateAuditStatus(previewPhoto.id, 'Improvement Outlet', previewPhoto); setPreviewPhoto({...previewPhoto, status: 'Improvement Outlet'}); }} 
+                      className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-3 rounded-xl transition-all font-bold text-sm border ${previewPhoto.status === 'Improvement Outlet' ? 'bg-yellow-400 text-yellow-900 border-yellow-400 shadow-lg shadow-yellow-900/50' : 'bg-transparent text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10'}`}
+                    >
+                      <AlertCircle className="w-4 h-4 mr-1.5" /> Improvement Outlet
+                    </button>
+                    <button 
+                      onClick={() => { updateAuditStatus(previewPhoto.id, 'Planogram Compliant', previewPhoto); setPreviewPhoto({...previewPhoto, status: 'Planogram Compliant'}); }} 
+                      className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-3 rounded-xl transition-all font-bold text-sm border ${previewPhoto.status === 'Planogram Compliant' ? 'bg-green-500 text-white border-green-400 shadow-lg shadow-green-900/50' : 'bg-transparent text-green-400 border-green-500/30 hover:bg-green-500/10'}`}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1.5" /> Planogram Compliant
+                    </button>
+                 </div>
+              </div>
 
-        function updateDbStatus(data) {
-            const status = { green: 0, amber: 0, red: 0, total: data.length };
-            data.forEach(d => {
-                const s = getRAGStatus(d.sttAchPercent).text;
-                if(s==='Green') status.green++; else if(s==='Amber') status.amber++; else status.red++;
-            });
-            renderHealthBar('db-health', 'DB', status);
-        }
+           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+        // --- YOUR CODE ENDS HERE ---
 
-        function renderHealthBar(id, label, s) {
-            const gp = s.total > 0 ? (s.green/s.total)*100 : 0;
-            const ap = s.total > 0 ? (s.amber/s.total)*100 : 0;
-            const rp = s.total > 0 ? (s.red/s.total)*100 : 0;
-            
-            document.getElementById(id).innerHTML = `
-                <h3 class="text-md font-semibold text-gray-700 mb-2">${label} Status (Total: ${s.total})</h3>
-                <div class="flex h-6 rounded-full overflow-hidden text-xs font-semibold animate-fade-in">
-                    <div class="chart-bar fill-green text-center text-white p-1" style="width: 0%; transition: width 1s ease-out;">${s.green || ''}</div>
-                    <div class="chart-bar fill-amber text-center text-white p-1" style="width: 0%; transition: width 1s ease-out;">${s.amber || ''}</div>
-                    <div class="chart-bar fill-red text-center text-white p-1" style="width: 0%; transition: width 1s ease-out;">${s.red || ''}</div>
-                </div>
-                <div class="flex justify-between text-xs mt-1 animate-fade-in">
-                    <span class="text-green">Above 90%: ${s.green}</span>
-                    <span class="text-amber">85-90%: ${s.amber}</span>
-                    <span class="text-red">Below 85%: ${s.red}</span>
-                </div>
-            `;
-            setTimeout(() => {
-                const bars = document.getElementById(id).querySelectorAll('.chart-bar');
-                if(bars[0]) bars[0].style.width = gp + '%';
-                if(bars[1]) bars[1].style.width = ap + '%';
-                if(bars[2]) bars[2].style.width = rp + '%';
-            }, 100);
-        }
-
-        function showFlashMessage() {
-            const el = document.getElementById('flash-notification');
-            const titleEl = el.querySelector('h3');
-            const msgEl = el.querySelector('p');
-
-            const hour = new Date().getHours();
-            let greeting = 'Good Morning';
-            if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
-            else if (hour >= 17 && hour < 21) greeting = 'Good Evening';
-            else if (hour >= 21 || hour < 5) greeting = 'Good Night';
-
-            titleEl.textContent = greeting + '!';
-            msgEl.textContent = "Welcome back to your dashboard.";
-
-            setTimeout(() => { el.classList.remove('-translate-y-full'); }, 1000); 
-            setTimeout(() => { el.classList.add('-translate-y-full'); }, 9000);
-        }
-
-        initDashboard();
-        initializeTabs();
-        initializeTrendButtons();
-        showFlashMessage();
-
+        // Render the component to the DOM
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
     </script>
 </body>
 </html>
