@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPARTA MTD Sales Performance Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js and DataLabels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <!-- Load PapaParse for CSV reading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+            /* Prevent text selection */
+            -webkit-user-select: none; 
+            -moz-user-select: none; 
+            -ms-user-select: none; 
+            user-select: none; 
+        }
+        input, textarea {
+            user-select: text;
+        }
+
+        /* Custom Gradient Fill for Header - Minimal Dark Blue */
+        .header-gradient {
+            background: linear-gradient(120deg, #052065 0%, #0060E5 100%); 
+        }
+
+        .gauge-meter {
+            height: 10px;
+            border-radius: 9999px;
+            overflow: hidden;
+            background-color: #e5e7eb; 
+        }
+        .gauge-fill {
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 9999px;
+            height: 100%; 
+        }
+        /* RAG Colors */
+        .fill-green { background-color: #00B991; }
+        .fill-amber { background-color: #FFA000; }
+        .fill-red { background-color: #F33131; }
+        .fill-blue { background-color: #0060E5; }
+        
+        .ring-green { --tw-ring-color: #00B991; }
+        .ring-amber { --tw-ring-color: #FFA000; }
+        .ring-red { --tw-ring-color: #F33131; }
+        .ring-blue { --tw-ring-color: #0060E5; }
+
+        .text-green { color: #008848; } 
+        .text-amber { color: #FFA000; }
+        .text-red { color: #F33131; }
+        .text-blue { color: #0060E5; }
+        .text-red-600 { color: #F33131; } 
+        .text-green-600 { color: #008848; }
+
+        .chart-bar {
+            transition: width 0.7s ease-out;
+            height: 100%;
+            min-width: 1rem;
+        }
+        
+        /* Tab Styles */
+        .tab-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; 
+            font-weight: 500;
+            font-size: 0.875rem; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        .tab-active {
+            background-color: white;
+            color: #052065; 
+            font-weight: 700;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: scale(1.02); 
+        }
+        .tab-inactive {
+            background-color: transparent;
+            color: #f4f7f9;
+            opacity: 0.8;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .tab-inactive:hover {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Trend Button Styles */
+        .trend-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            background-color: white;
+            color: #4b5563;
+            transition: all 0.2s;
+        }
+        .trend-btn:hover {
+            background-color: #f9fafb;
+            border-color: #d1d5db;
+        }
+        .trend-btn.active {
+            background-color: #052065; 
+            color: white;
+            border-color: #052065;
+        }
+        
+        /* Loading Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 50;
+            display: none; /* Controlled by JS */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0060E5; 
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f4f7f9;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ANIMATIONS */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0; 
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+        .hover-scale:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Fix for sticky column */
+        @media (min-width: 1024px) {
+            .min-w-full th:first-child,
+            .min-w-full td:first-child {
+                position: sticky;
+                left: 0;
+                z-index: 10;
+                box-shadow: 2px 0 3px -1px rgba(0, 0, 0, 0.05); 
+            }
+            .min-w-full td:first-child {
+                background-color: white;
+            }
+            .min-w-full tfoot td:first-child {
+                 background-color: #f3f4f6; 
+            }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-gray-100 animate-fade-in-up">
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-[#eef2ff] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-[#052065]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Secure Access</h2>
+                <p class="text-sm text-gray-500 mt-2">Enter your PIN to view the dashboard.</p>
+            </div>
+            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
+                <div>
+                    <!-- Updated maxlength to 6 for the new pin length -->
+                    <input type="password" id="pin-input" class="w-full text-center text-2xl tracking-[0.5em] font-bold p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0060E5] focus:border-transparent outline-none transition-all" placeholder="••••" maxlength="6" required>
+                </div>
+                <button type="submit" class="w-full py-3 px-4 bg-gradient-to-r from-[#052065] to-[#0060E5] text-white font-bold rounded-lg hover:shadow-lg transform transition hover:-translate-y-0.5">
+                    Unlock Dashboard
+                </button>
+                <p id="login-error" class="text-xs text-[#F33131] font-bold hidden">Incorrect PIN. Please try again.</p>
+            </form>
+        </div>
+        <p class="mt-8 text-xs text-gray-400">Restricted Access</p>
+    </div>
+
+    <!-- Flash Notification -->
+    <div id="flash-notification" class="fixed top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-[#052065] text-white px-6 py-4 rounded-b-xl shadow-2xl z-[100] transition-transform duration-700 ease-out flex items-center gap-4 min-w-[300px] border-b-4 border-[#0060E5]">
+        <div class="p-2 bg-[#0060E5] rounded-full">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+        </div>
+        <div>
+            <h3 class="font-bold text-sm uppercase tracking-wider text-gray-200">System Update</h3>
+            <p class="text-sm font-medium">Data Refreshed.</p>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-overlay">
+        <div class="spinner mb-4"></div>
+        <h2 class="text-xl font-bold text-gray-700">Analyzing Sales Data...</h2>
+        <p class="text-sm text-gray-500">Please wait a moment</p>
+        <p id="error-details" class="text-xs text-[#F33131] mt-2 hidden text-center max-w-md px-4"></p>
+    </div>
+
+    <div id="app" class="max-w-7xl mx-auto" style="display: none;">
+
+        <!-- Header -->
+        <header class="header-gradient p-6 rounded-xl shadow-xl mb-4 flex flex-col items-start border border-gray-200 animate-fade-in-up">
+            <div class="mb-0">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-white">SPARTA MTD Sales Performance</h1>
+                <p id="data-date" class="text-lg text-gray-200 mt-1">(Data as of ...)</p>
+            </div>
+        </header>
+
+        <!-- Sticky Filter Bar -->
+        <div id="sticky-filters" class="sticky top-0 z-50 py-3 -mx-4 sm:-mx-8 px-4 sm:px-8 bg-[#f4f7f9]/90 backdrop-blur-md border-b border-gray-200 shadow-sm mb-6 transition-all duration-300 animate-fade-in-up" style="animation-delay: 0.1s;">
+            <div id="filter-controls" class="flex flex-wrap gap-2 justify-center sm:justify-start">
+                <!-- Dropdowns inserted by JS -->
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div id="kpi-cards" class="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-6"></div>
+
+        <!-- Tab Controls -->
+        <div class="flex justify-center mb-6 z-10 relative animate-fade-in-up" style="animation-delay: 0.2s;">
+            <div class="flex p-1 bg-gray-700/30 rounded-lg shadow-md backdrop-blur-sm transition-all duration-300">
+                <button id="tab-territory" class="tab-button tab-active">Territory Update</button>
+                <button id="tab-db" class="tab-button tab-inactive">DB Update</button>
+                <button id="tab-sr" class="tab-button tab-inactive">DFF Update</button>
+            </div>
+        </div>
+
+        <!-- Visuals Panel 1: Main -->
+        <div id="visuals-panel-main" style="display: grid;" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 animate-fade-in">
+
+            <!-- Performance Status -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Performance Status (DB & SR)</h2>
+                <p class="text-sm text-gray-500 mb-4">No. of performers Above 90%, 85-90%, and Below 85% of Time elapsed %.</p>
+                <div id="sr-health" class="mb-6 border-b pb-4 border-gray-100"></div>
+                <div id="db-health"></div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="lg:col-span-2">
+                <div id="territory-chart-container" style="display: block;" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Territory STT Achievement vs. Target</h2>
+                    <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span> (Ranked by Achievement)</p>
+                    <div id="stt-chart" class="space-y-4"></div>
+                </div>
+
+                <div id="db-chart-container" style="display: none;" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">DB STT Achievement vs. Target (Aggregated)</h2>
+                    <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span> (Ranked by Achievement)</p>
+                    <div id="db-stt-chart" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Combo Chart -->
+            <div id="combo-chart-section" class="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
+                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-4 gap-4">
+                    <div class="mb-2 xl:mb-0">
+                        <h2 class="text-xl font-bold text-gray-800">Daily Sales vs. ERC Trend</h2>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full xl:w-auto">
+                         <!-- DFF Filter Container -->
+                        <div id="dff-filter-container" class="w-auto"></div>
+                        <!-- Trend Buttons -->
+                        <div class="flex flex-wrap gap-2" id="trend-buttons">
+                            <button class="trend-btn active" data-filter="MTD">MTD</button>
+                            <button class="trend-btn" data-filter="L3D">L3D</button>
+                            <button class="trend-btn" data-filter="W1">W1</button>
+                            <button class="trend-btn" data-filter="W2">W2</button>
+                            <button class="trend-btn" data-filter="W3">W3</button>
+                            <button class="trend-btn" data-filter="W4">W4</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative h-80 md:h-96">
+                    <canvas id="comboChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visuals Panel 2: SR View -->
+        <div id="visuals-panel-sr" style="display: none;" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 animate-fade-in">
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Top 10 DFF Nationally (by STT Ach %)</h2>
+                <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span></p>
+                <div id="top-10-sr-chart" class="space-y-4"></div>
+            </div>
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover-scale">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Bottom 10 DFF Nationally (by STT Ach %)</h2>
+                <p class="text-sm font-semibold text-gray-500 mb-4">Time Elapsed Target: <span class="text-blue benchmark-text"></span></p>
+                <div id="bottom-10-sr-chart" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- Tables -->
+        <div id="tab-panels">
+            <div id="panel-territory" style="display: block;" class="animate-fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed Territory Performance MTD</h2>
+                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">Territory</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="territory-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                </div>
+            </div>
+            
+            <div id="panel-db" style="display: none;" class="animate-fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DB Performance MTD (Aggregated)</h2>
+                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DB Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="db-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                </div>
+            </div>
+
+            <div id="panel-sr" style="display: none;" class="animate-fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DFF Performance MTD</h2>
+                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DFF Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">PTP ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="sr-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                </div>
+            </div>
+            
+            <div id="panel-db" style="display: none;" class="animate-fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DB Performance MTD (Aggregated)</h2>
+                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DB Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="db-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                </div>
+            </div>
+
+            <div id="panel-sr" style="display: none;" class="animate-fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Detailed DFF Performance MTD</h2>
+                    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-20">DFF Name</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT TGT (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">STT Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach (Lac)</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">TDP 1 Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ERC Ach %</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">SF TBR Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU TGT</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach</th><th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">P.SKU Ach %</th></tr></thead><tbody id="sr-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Disable Right Click
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        Chart.register(ChartDataLabels);
+        Chart.defaults.animation.duration = 1000;
+        Chart.defaults.animation.easing = 'easeOutQuart';
+
+        // --- SECURITY SETTINGS (Base64 Obfuscated) ---
+        // PIN is Base64 encoded
+        const SECURE_PIN = "MTA5NjAw"; 
+        
+        // Obfuscated Data Sources
+        const SECURE_SRC_1 = "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvZS8yUEFDWC0xdlNXM2UwSGdvdG40Y3JGSzFhYzJvc3l0bkZ0N2phV2xWU1Y1YTFCVVJLLTN6TFVfUTktTHhieVR1Q0NNTGE0dGJPMy05bkxodHRkay0xdi9wdWI/b3V0cHV0PWNzdg==";
+        const SECURE_SRC_2 = "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvZS8yUEFDWC0xdlNXM2UwSGdvdG40Y3JGSzFhYzJvc3l0bkZ0N2phV2xWU1Y1YTFCVVJLLTN6TFVfUTktTHhieVR1Q0NNTGE0dGJPMy05bkxodHRkay0xdi9wdWI/Z2lkPTU3MzE0Mjc4NyZzaW5nbGU9dHJ1ZSZvdXRwdXQ9Y3N2";
+
+        // Variables
+        let timeElapsedPercent = 0; 
+        let daysPassed = "";
+        let totalWorkingDaysInMonth = 26; 
+        const LAC_DIVISOR = 100000;
+        
+        let selectedFilters = { 'Area': 'All Areas', 'Territory': 'All Territories', 'DB Name': 'All DBs', 'DFF Name': 'All DFFs' };
+        let activeTab = 'territory';
+        let activeTrendFilter = 'MTD';
+        
+        let areaSelect, territorySelect, dbNameSelect, dffNameSelect;
+        let comboChartInstance = null;
+
+        let rawSrData = [];
+        let dailyRawData = [];
+        let processedTerritoryData = [];
+        let processedDbData = [];
+
+        // --- LOGIN LOGIC ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('pin-input');
+            const errorMsg = document.getElementById('login-error');
+            
+            // Encode input to Base64 and compare with stored hash
+            if (btoa(input.value) === SECURE_PIN) {
+                // Correct Password
+                document.getElementById('login-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    // Show loading and start app
+                    document.getElementById('loading-overlay').style.display = 'flex';
+                    initDashboard();
+                    initializeTabs();
+                    initializeTrendButtons();
+                    showFlashMessage();
+                }, 500);
+            } else {
+                // Wrong Password
+                errorMsg.classList.remove('hidden');
+                input.value = '';
+                input.focus();
+                // Shake effect
+                const box = document.querySelector('#login-screen > div');
+                box.animate([
+                    { transform: 'translateX(0)' },
+                    { transform: 'translateX(-10px)' },
+                    { transform: 'translateX(10px)' },
+                    { transform: 'translateX(0)' }
+                ], { duration: 300 });
+            }
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function parseNumeric(value) {
+            if (typeof value === 'number') return value;
+            if (typeof value === 'string') {
+                if (value.toLowerCase().includes('k')) {
+                    const number = parseFloat(value.toLowerCase().replace('k', '').replace(/,/g, ''));
+                    return isNaN(number) ? 0 : number * 1000; 
+                }
+                const cleanedValue = value.replace(/,/g, '').replace(/%/g, '');
+                const number = parseFloat(cleanedValue);
+                return isNaN(number) ? 0 : number;
+            }
+            return 0;
+        }
+
+        function countWorkingDays(year, month, limitDay) {
+            let count = 0;
+            for(let d = 1; d <= limitDay; d++) {
+                const dayOfWeek = new Date(year, month, d).getDay();
+                if(dayOfWeek !== 5) count++; 
+            }
+            return count;
+        }
+
+        function calculatePercentages(data) {
+            data.sttAchPercent = (data.sttTgt > 0) ? (data.sttAch / data.sttTgt) * 100 : 0;
+            data.ercAchPercent = (data.ercTgt > 0) ? (data.ercAch / data.ercTgt) * 100 : 0;
+            data.sfTbrAchPercent = (data.sfTbrTgt > 0) ? (data.sfTbrAch / data.sfTbrTgt) * 100 : 0;
+            data.premiumSkuAchPercent = (data.premiumSkuGoal > 0) ? (data.premiumSkuAch / data.premiumSkuGoal) * 100 : 0;
+            // Updated: TDP 1 Ach % is now calculated against STT TGT
+            data.tdp1AchPercent = (data.sttTgt > 0) ? (data.tdp1Ach / data.sttTgt) * 100 : 0;
+            return data;
+        }
+
+        function getRAGStatus(percentage) {
+            const benchmarkHigh = timeElapsedPercent * 0.90;
+            const benchmarkLow = timeElapsedPercent * 0.85;
+            if (percentage >= benchmarkHigh) return { color: 'fill-green', text: 'Green', ring: 'ring-green', textColor: 'text-green' };
+            else if (percentage >= benchmarkLow) return { color: 'fill-amber', text: 'Amber', ring: 'ring-amber', textColor: 'text-amber' };
+            else return { color: 'fill-red', text: 'Red', ring: 'ring-red', textColor: 'text-red' };
+        }
+
+        function formatInLac(amount) {
+            return (amount / LAC_DIVISOR).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatCount(amount) {
+            return Math.round(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        }
+        
+        function formatValue(value, unit) {
+            return unit === "Lac" ? formatInLac(value) : formatCount(value);
+        }
+
+        function calculateGrandTotals(dataArray) {
+            const totals = {
+                sttTgt: 0, sttAch: 0, ercTgt: 0, ercAch: 0, 
+                sfTbrTgt: 0, sfTbrAch: 0, premiumSkuGoal: 0, premiumSkuAch: 0,
+                tdp1Tgt: 0, tdp1Ach: 0
+            };
+            dataArray.forEach(data => {
+                for (const key in totals) {
+                    const val = parseNumeric(data[key]);
+                    if (!isNaN(val)) totals[key] += val;
+                }
+            });
+            totals.sttAchPercent = (totals.sttTgt > 0) ? (totals.sttAch / totals.sttTgt) * 100 : 0;
+            totals.ercAchPercent = (totals.ercTgt > 0) ? (totals.ercAch / totals.ercTgt) * 100 : 0;
+            totals.sfTbrAchPercent = (totals.sfTbrTgt > 0) ? (totals.sfTbrAch / totals.sfTbrTgt) * 100 : 0;
+            totals.premiumSkuAchPercent = (totals.premiumSkuGoal > 0) ? (totals.premiumSkuAch / totals.premiumSkuGoal) * 100 : 0;
+            // Updated: Grand Total TDP 1 Ach % uses STT TGT
+            totals.tdp1AchPercent = (totals.sttTgt > 0) ? (totals.tdp1Ach / totals.sttTgt) * 100 : 0;
+            return totals;
+        }
+
+        async function fetchCsvData(url) {
+            const timestampedUrl = `${url}&t=${Date.now()}`;
+            try {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(timestampedUrl)}`;
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    const jsonData = await response.json();
+                    if (jsonData.contents) return parseCsv(jsonData.contents);
+                }
+            } catch (e) { console.warn("AllOrigins JSON failed", e); }
+            try {
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(timestampedUrl)}`;
+                const response = await fetch(proxyUrl);
+                if (response.ok) return parseCsv(await response.text());
+            } catch (e) { console.warn("CorsProxy failed", e); }
+            try {
+                const response = await fetch(timestampedUrl);
+                if (response.ok) return parseCsv(await response.text());
+            } catch (e) { console.error("Direct fetch failed", e); }
+            throw new Error("Unable to fetch data.");
+        }
+
+        function parseCsv(csvText) {
+            return new Promise((resolve) => {
+                Papa.parse(csvText, { header: true, skipEmptyLines: true, complete: (results) => resolve(results) });
+            });
+        }
+
+        async function initDashboard() {
+            try {
+                // Decode obfuscated URLs
+                const mtdUrl = atob(SECURE_SRC_1);
+                const chartUrl = atob(SECURE_SRC_2);
+
+                const [mtdResult, chartResult] = await Promise.all([ fetchCsvData(mtdUrl), fetchCsvData(chartUrl) ]);
+                const mtdData = mtdResult.data;
+                const mtdHeaders = mtdResult.meta.fields; 
+                const chartData = chartResult.data;
+                const headerP = mtdHeaders[15]; 
+                const headerQ = mtdHeaders[16]; 
+                const headerR = mtdHeaders[17]; 
+                const tmTgtMap = { "MESBA RAHMAN": 1400, "FARHAN MORSHED KHAN": 700, "NURUL ALAM": 500, "RAYHAN MASUD": 400, "NOOR MD. HABIBULLAH": 1000, "MONIRUZZAMAN MONIR": 380, "SHAHREAR AHMED": 620 };
+
+                rawSrData = mtdData.map(sr => ({
+                    area: (sr['AREA'] || sr['Area'] || '').trim(),
+                    territory: (sr['TERRITORY'] || sr['Territory'] || '').trim(),
+                    tm: (sr['TM'] || '').trim(),
+                    lead: sr['LEAD'],
+                    dhCode: (sr['DH CODE'] || sr['DH Code'] || '').toString().trim(), 
+                    dhName: (sr['DH NAME'] || sr['DH Name'] || '').trim(),
+                    dffCode: (sr['DFF CODE'] || sr['DFF Code'] || '').toString().trim(),
+                    dffName: (sr['DFF NAME'] || sr['DFF Name'] || '').trim(),
+                    sttTgt: parseNumeric(sr['STT TGT']),
+                    sttAch: parseNumeric(sr['MTD ACH']),
+                    ercTgt: parseNumeric(sr['ERC TGT']),
+                    ercAch: parseNumeric(sr['ERC ACH']),
+                    sfTbrTgt: 0,
+                    sfTbrAch: parseNumeric(sr[headerP]), 
+                    premiumSkuGoal: parseNumeric(sr[headerQ]),
+                    premiumSkuAch: parseNumeric(sr[headerR]),
+                    tdp1Tgt: parseNumeric(sr['TDP 1 TGT'] || sr['TDP TGT'] || 0), 
+                    tdp1Ach: 0 
+                }));
+
+                const dffCodeToName = {};
+                rawSrData.forEach(sr => { if (sr.dffCode) dffCodeToName[sr.dffCode.toString().trim()] = sr.dffName; });
+
+                dailyRawData = chartData.map(row => {
+                    const code = (row['SALESREP_CODE'] || row['DFF_CODE'] || row['CODE'] || '').toString().trim();
+                    let finalName = (row['SALESREP_NAME'] || row['DFF_NAME'] || row['NAME'] || '').trim();
+                    if (code && dffCodeToName[code]) finalName = dffCodeToName[code];
+
+                    return {
+                        calday: row['CALDAY'],
+                        sales: parseNumeric(row['SALES']),
+                        erc: parseNumeric(row['ERC']),
+                        // TDP 1 Mapping removed as value comes from SALES aggregation
+                        AREA: (row['AREA'] || row['Area'] || '').trim(),
+                        TERRITORY: (row['TERRITORY'] || row['Territory'] || '').trim(),
+                        DISTRIBUTOR_NAME: (row['DISTRIBUTOR_NAME'] || row['Distributor Name'] || row['DB_NAME'] || row['DB Name'] || '').trim(),
+                        DFF_NAME: finalName
+                    };
+                });
+
+                // --- AGGREGATE TDP 1 ACH FROM DAILY DATA (SALES 1-10) ---
+                const dffTdpMap = new Map();
+                dailyRawData.forEach(row => {
+                    const key = row.DFF_NAME;
+                    if (!dffTdpMap.has(key)) dffTdpMap.set(key, 0);
+                    
+                    const d = new Date(row.calday);
+                    if (!isNaN(d.getTime())) {
+                        const day = d.getDate();
+                        // Filter: Days 1 to 10 ONLY
+                        if (day >= 1 && day <= 10) {
+                            // User Instruction: "value ise SALES column"
+                            dffTdpMap.set(key, dffTdpMap.get(key) + row.sales);
+                        }
+                    }
+                });
+
+                // Merge aggregated TDP into rawSrData
+                rawSrData.forEach(sr => {
+                    if (dffTdpMap.has(sr.dffName)) {
+                        sr.tdp1Ach = dffTdpMap.get(sr.dffName);
+                    }
+                });
+
+                let maxDate = new Date();
+                if (dailyRawData.length > 0) {
+                    const sortedDates = dailyRawData.map(r => new Date(r.calday)).filter(d => !isNaN(d.getTime())).sort((a,b) => b - a);
+                    if (sortedDates.length > 0) maxDate = sortedDates[0];
+                }
+
+                const day = maxDate.getDate();
+                const monthName = maxDate.toLocaleString('default', { month: 'short' });
+                const suffix = (d) => { if (d > 3 && d < 21) return 'th'; switch (d % 10) { case 1: return "st"; case 2: return "nd"; case 3: return "rd"; default: return "th"; } };
+                document.getElementById('data-date').innerText = `(Data as of ${monthName} ${day}${suffix(day)})`;
+
+                if (day >= 22) activeTrendFilter = 'W4'; else if (day >= 15) activeTrendFilter = 'W3'; else if (day >= 8) activeTrendFilter = 'W2'; else activeTrendFilter = 'W1';
+                document.querySelectorAll('.trend-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === activeTrendFilter) btn.classList.add('active');
+                });
+
+                const currentYear = maxDate.getFullYear();
+                const currentMonth = maxDate.getMonth();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const passed = countWorkingDays(currentYear, currentMonth, day);
+                const total = countWorkingDays(currentYear, currentMonth, daysInMonth);
+                
+                totalWorkingDaysInMonth = total;
+                daysPassed = `${passed} out of ${total}`;
+                timeElapsedPercent = (total > 0) ? (passed / total) * 100 : 0;
+                document.querySelectorAll('.benchmark-text').forEach(el => el.textContent = `${timeElapsedPercent.toFixed(2)}%`);
+
+                preProcessData(tmTgtMap);
+                initializeFilters();
+                applyFilters(); 
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.querySelector('#loading-overlay h2').innerText = "Connection Failed";
+                document.querySelector('#loading-overlay p').innerText = "Failed to load data.";
+                document.getElementById('error-details').innerText = error.message;
+                document.getElementById('error-details').classList.remove('hidden');
+            }
+        }
+
+        function preProcessData(tmTgtMap = {}) {
+            const nationallySortedSrs = [...rawSrData].map(item => calculatePercentages(item)).sort((a, b) => b.sttAchPercent - a.sttAchPercent);
+            nationallySortedSrs.forEach((sr, index) => { sr.nationalRank = index + 1; });
+            
+            const territoryMap = new Map();
+            rawSrData.forEach(sr => {
+                const key = sr.territory;
+                if (!territoryMap.has(key)) {
+                    territoryMap.set(key, {
+                        territory: sr.territory, tm: sr.tm, area: sr.area,
+                        sttTgt: 0, sttAch: 0, ercTgt: 0, ercAch: 0,
+                        sfTbrTgt: 0, sfTbrAch: 0, premiumSkuGoal: 0, premiumSkuAch: 0,
+                        tdp1Tgt: 0, tdp1Ach: 0
+                    });
+                }
+                const t = territoryMap.get(key);
+                t.sttTgt += sr.sttTgt; t.sttAch += sr.sttAch;
+                t.ercTgt += sr.ercTgt; t.ercAch += sr.ercAch;
+                t.sfTbrAch += sr.sfTbrAch;
+                t.premiumSkuGoal += sr.premiumSkuGoal; t.premiumSkuAch += sr.premiumSkuAch;
+                t.tdp1Tgt += sr.tdp1Tgt; t.tdp1Ach += sr.tdp1Ach;
+            });
+            
+            territoryMap.forEach((val, key) => {
+                if (tmTgtMap[val.tm] !== undefined) val.sfTbrTgt = tmTgtMap[val.tm];
+                else val.sfTbrTgt = 0;
+            });
+
+            const dbMap = new Map();
+            rawSrData.forEach(sr => {
+                const key = sr.dhName;
+                if (!dbMap.has(key)) {
+                    dbMap.set(key, {
+                        dhName: sr.dhName, area: sr.area, territory: sr.territory,
+                        sttTgt: 0, sttAch: 0, ercTgt: 0, ercAch: 0,
+                        sfTbrTgt: 0, sfTbrAch: 0, premiumSkuGoal: 0, premiumSkuAch: 0,
+                        tdp1Tgt: 0, tdp1Ach: 0
+                    });
+                }
+                const db = dbMap.get(key);
+                db.sttTgt += sr.sttTgt; db.sttAch += sr.sttAch;
+                db.ercTgt += sr.ercTgt; db.ercAch += sr.ercAch;
+                db.sfTbrTgt = 0; 
+                db.sfTbrAch += sr.sfTbrAch;
+                db.premiumSkuGoal += sr.premiumSkuGoal; db.premiumSkuAch += sr.premiumSkuAch;
+                db.tdp1Tgt += sr.tdp1Tgt; db.tdp1Ach += sr.tdp1Ach;
+            });
+
+            processedTerritoryData = Array.from(territoryMap.values()).map(item => calculatePercentages(item));
+            processedDbData = Array.from(dbMap.values()).map(item => calculatePercentages(item));
+        }
+
+        function getAggregatedDailyData() {
+            const aggMap = new Map();
+            const filteredDailyData = dailyRawData.filter(row => {
+                const matchArea = selectedFilters.Area === 'All Areas' || row.AREA === selectedFilters.Area;
+                const matchTerritory = selectedFilters.Territory === 'All Territories' || row.TERRITORY === selectedFilters.Territory;
+                const matchDb = selectedFilters['DB Name'] === 'All DBs' || row.DISTRIBUTOR_NAME === selectedFilters['DB Name'];
+                const isDffActive = selectedFilters['DFF Name'] !== 'All DFFs' && selectedFilters['DFF Name'] !== 'Select DB Name First';
+                const matchDff = !isDffActive || row.DFF_NAME === selectedFilters['DFF Name'];
+                return matchArea && matchTerritory && matchDb && matchDff;
+            });
+
+            filteredDailyData.forEach(row => {
+                const dateObj = new Date(row.calday);
+                const dateKey = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }); 
+                const rawDate = row.calday;
+                if (!aggMap.has(rawDate)) aggMap.set(rawDate, { date: rawDate, label: dateKey, sales: 0, erc: 0 });
+                const entry = aggMap.get(rawDate);
+                entry.sales += row.sales;
+                entry.erc += row.erc;
+            });
+
+            return Array.from(aggMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date)).map(d => ({ dateObj: new Date(d.date), label: d.label, sales: d.sales / LAC_DIVISOR, erc: d.erc }));
+        }
+
+        function filterTrendData(data, filterType) {
+            if (filterType === 'L3D') return data.slice(-3);
+            if (filterType === 'W1') return data.filter(d => d.dateObj.getDate() >= 1 && d.dateObj.getDate() <= 7);
+            if (filterType === 'W2') return data.filter(d => d.dateObj.getDate() >= 8 && d.dateObj.getDate() <= 14);
+            if (filterType === 'W3') return data.filter(d => d.dateObj.getDate() >= 15 && d.dateObj.getDate() <= 21);
+            if (filterType === 'W4') return data.filter(d => d.dateObj.getDate() >= 22);
+            return data;
+        }
+
+        function populateDateWiseChart(ratio = 1, filterType = 'MTD', totalTarget = 0) {
+            const ctx = document.getElementById('comboChart');
+            if (!ctx) return; 
+            
+            let chartDataRaw = getAggregatedDailyData();
+            let runningSales = 0;
+            let workingDaysPassed = 0;
+            const totalTargetInLac = totalTarget / LAC_DIVISOR;
+
+            chartDataRaw.forEach(d => {
+                const isFriday = d.dateObj.getDay() === 5;
+                const isWorkingDay = !isFriday;
+                const remainingDays = Math.max(1, totalWorkingDaysInMonth - workingDaysPassed);
+                let dailyRR = 0;
+                if (isWorkingDay) dailyRR = Math.max(0, (totalTargetInLac - runningSales) / remainingDays);
+                d.dynamicRR = dailyRR;
+                runningSales += d.sales; 
+                if (isWorkingDay) workingDaysPassed++;
+            });
+
+            chartDataRaw = filterTrendData(chartDataRaw, filterType);
+            const labels = chartDataRaw.map(d => `${d.label} (${d.dateObj.toLocaleDateString('en-US', { weekday: 'short' })})`);
+            const barBackgroundColors = chartDataRaw.map(d => d.dateObj.getDay() === 5 ? 'rgba(243, 49, 49, 0.8)' : 'rgba(0, 96, 229, 0.7)'); 
+            const barBorderColors = chartDataRaw.map(d => d.dateObj.getDay() === 5 ? 'rgba(243, 49, 49, 1)' : 'rgba(0, 96, 229, 1)');
+            
+            const gapData = chartDataRaw.map(d => {
+                if (d.dateObj.getDay() === 5) return 0; 
+                return Math.max(0, d.dynamicRR - d.sales);
+            });
+
+            if (comboChartInstance) comboChartInstance.destroy();
+
+            comboChartInstance = new Chart(ctx, {
+                type: 'bar', 
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'ERC Ach', data: chartDataRaw.map(d => d.erc), type: 'line', borderColor: '#7500A7', backgroundColor: '#7500A7', borderWidth: 3, tension: 0.4, yAxisID: 'y1', order: 0, datalabels: { align: 'top', anchor: 'start', color: '#7500A7', font: { weight: 'bold', size: 11 }, offset: 4 } },
+                        { label: 'Sales (Lac)', data: chartDataRaw.map(d => d.sales), type: 'bar', backgroundColor: barBackgroundColors, borderColor: barBorderColors, borderWidth: 1, borderRadius: 4, yAxisID: 'y', order: 1, stack: 'sttStack', datalabels: { align: 'end', anchor: 'end', color: '#052065', font: { weight: 'bold', size: 10 }, formatter: v => v.toFixed(2) } },
+                        { label: 'RR Gap', data: gapData, type: 'bar', backgroundColor: 'rgba(200, 200, 200, 0.3)', borderColor: 'rgba(200, 200, 200, 0.5)', borderWidth: 1, borderRadius: 4, yAxisID: 'y', order: 2, stack: 'sttStack', datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0.01, align: 'end', anchor: 'end', color: '#F33131', font: { weight: 'bold', size: 10 }, formatter: (val, ctx) => { const rr = chartDataRaw[ctx.dataIndex].dynamicRR.toFixed(2); const gap = val.toFixed(2); return `${rr} (Gap: ${gap})`; }, offset: -2 } }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 }}, animation: { duration: 1000, easing: 'easeOutQuart' }, plugins: { tooltip: { mode: 'index', intersect: false, callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) label += ': '; if (context.dataset.label === 'RR Gap') { const dateRR = chartDataRaw[context.dataIndex].dynamicRR; return `Required RR: ${dateRR.toFixed(2)} (Gap: ${context.raw.toFixed(2)})`; } return label + context.formattedValue; } } }, legend: { position: 'bottom' }, datalabels: { display: true, clip: false } }, scales: { x: { display: true, stacked: true }, y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Sales (Lac)' }, stacked: true }, y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'ERC Ach (Count)' }, grid: { drawOnChartArea: false } } } }
+            });
+        }
+
+        function applyFilters() {
+            let filteredTerritories = [...processedTerritoryData];
+            let filteredDbs = [...processedDbData];
+            let filteredSrs = [...rawSrData];
+
+            if (selectedFilters.Area !== 'All Areas') filteredSrs = filteredSrs.filter(data => data.area === selectedFilters.Area);
+            if (selectedFilters.Territory !== 'All Territories') filteredSrs = filteredSrs.filter(data => data.territory === selectedFilters.Territory);
+            if (selectedFilters['DB Name'] !== 'All DBs') filteredSrs = filteredSrs.filter(data => data.dhName === selectedFilters['DB Name']);
+            if (selectedFilters['DFF Name'] !== 'All DFFs' && selectedFilters['DFF Name'] !== 'Select DB Name First') filteredSrs = filteredSrs.filter(data => data.dffName === selectedFilters['DFF Name']);
+            
+            const activeTerritories = new Set(filteredSrs.map(sr => sr.territory));
+            const activeDbNames = new Set(filteredSrs.map(sr => sr.dhName));
+            
+            filteredTerritories = processedTerritoryData.filter(t => activeTerritories.has(t.territory));
+            filteredDbs = processedDbData.filter(db => activeDbNames.has(db.dhName));
+
+            const totals = calculateGrandTotals(filteredSrs);
+            totals.sfTbrTgt = filteredTerritories.reduce((sum, t) => sum + t.sfTbrTgt, 0);
+            totals.sfTbrAchPercent = (totals.sfTbrTgt > 0) ? (totals.sfTbrAch / totals.sfTbrTgt) * 100 : 0;
+
+            const newKpiData = updateKpiData(totals);
+            populateKpiCards(newKpiData);
+            populateTable('territory-list', filteredTerritories, 'territory', 'tm');
+            populateTable('db-list', filteredDbs, 'dhName', 'territory');
+            populateTable('sr-list', filteredSrs, 'dffName', 'dhName', true); 
+            populateTerritoryChart(filteredTerritories);
+            populateDbChart(filteredDbs);
+            populateTopBottomSrCharts(filteredSrs);
+            updateSrStatus(filteredSrs); 
+            updateDbStatus(filteredDbs); 
+            populateDateWiseChart(1, activeTrendFilter, totals.sttTgt);
+        }
+
+        function initializeTrendButtons() {
+            document.querySelectorAll('.trend-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeTrendFilter = btn.getAttribute('data-filter');
+                    let filteredSrs = [...rawSrData];
+                    if (selectedFilters.Area !== 'All Areas') filteredSrs = filteredSrs.filter(d => d.area === selectedFilters.Area);
+                    if (selectedFilters.Territory !== 'All Territories') filteredSrs = filteredSrs.filter(d => d.territory === selectedFilters.Territory);
+                    if (selectedFilters['DB Name'] !== 'All DBs') filteredSrs = filteredSrs.filter(d => d.dhName === selectedFilters['DB Name']);
+                    if (selectedFilters['DFF Name'] !== 'All DFFs') filteredSrs = filteredSrs.filter(d => d.dffName === selectedFilters['DFF Name']);
+                    populateDateWiseChart(1, activeTrendFilter, calculateGrandTotals(filteredSrs).sttTgt);
+                });
+            });
+        }
+
+        function initializeFilters() {
+            const controls = document.getElementById('filter-controls');
+            const dffContainer = document.getElementById('dff-filter-container'); // Get new container
+            controls.innerHTML = '';
+            dffContainer.innerHTML = ''; // Clear it too
+            
+            const areas = [...new Set(rawSrData.map(i => i.area))].sort();
+            const territories = [...new Set(rawSrData.map(i => i.territory))].sort();
+            const dbNames = [...new Set(rawSrData.map(i => i.dhName))].sort();
+            
+            // Updated: Pass false for isDarkBg because filters are now on light sticky bar
+            const areaDrop = createFilterDropdown('Area', ['All Areas', ...areas], false);
+            areaSelect = areaDrop.select;
+            const terrDrop = createFilterDropdown('Territory', ['All Territories', ...territories], false);
+            territorySelect = terrDrop.select;
+            const dbDrop = createFilterDropdown('DB Name', ['All DBs', ...dbNames], false);
+            dbNameSelect = dbDrop.select;
+            
+            const dffDrop = createFilterDropdown('DFF Name', ['Select DB Name First'], false); 
+            dffNameSelect = dffDrop.select;
+            
+            // --- Custom Styling for DFF Filter to match Trend Buttons ---
+            dffDrop.wrapper.querySelector('label').classList.add('hidden');
+            dffDrop.wrapper.classList.remove('w-full', 'sm:w-48'); 
+            dffDrop.wrapper.classList.add('w-32'); 
+            dffNameSelect.classList.remove('py-2', 'px-3', 'border-gray-300', 'rounded-lg', 'shadow-sm');
+            dffNameSelect.classList.add('py-1', 'px-3', 'text-xs', 'h-[26px]', 'border-gray-200', 'rounded-md', 'font-semibold', 'text-gray-600', 'focus:outline-none', 'focus:ring-0'); 
+            dffNameSelect.disabled = true;
+            dffNameSelect.classList.add('opacity-50', 'cursor-not-allowed');
+
+            controls.append(areaDrop.wrapper, terrDrop.wrapper, dbDrop.wrapper);
+            dffContainer.append(dffDrop.wrapper); // Moved DFF filter to chart section container
+        }
+
+        function createFilterDropdown(name, options, isDarkBg = true) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex flex-col text-sm w-full sm:w-48'; 
+            const label = document.createElement('label');
+            label.textContent = name;
+            label.className = `text-xs font-semibold mb-1 pl-1 ${isDarkBg ? 'text-gray-200' : 'text-gray-700'}`;
+            const select = document.createElement('select');
+            select.className = 'py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700 bg-white cursor-pointer w-full';
+            options.forEach(opt => { const el = document.createElement('option'); el.value = opt; el.textContent = opt; select.appendChild(el); });
+            select.addEventListener('change', (e) => { selectedFilters[name] = e.target.value; updateDependentFilters(name); applyFilters(); });
+            wrapper.append(label, select);
+            return { wrapper, select };
+        }
+
+        function updateDependentFilters(changed) {
+            let srs = [...rawSrData];
+            if (selectedFilters.Area !== 'All Areas') srs = srs.filter(s => s.area === selectedFilters.Area);
+            if (changed === 'Area') {
+                const terrs = ['All Territories', ...new Set(srs.map(s => s.territory).sort())];
+                updateSelectOptions(territorySelect, terrs, 'Territory');
+            }
+            if (selectedFilters.Territory !== 'All Territories') srs = srs.filter(s => s.territory === selectedFilters.Territory);
+            if (changed === 'Area' || changed === 'Territory') {
+                const dbs = ['All DBs', ...new Set(srs.map(s => s.dhName).sort())];
+                updateSelectOptions(dbNameSelect, dbs, 'DB Name');
+            }
+            if (selectedFilters['DB Name'] !== 'All DBs') srs = srs.filter(s => s.dhName === selectedFilters['DB Name']);
+            if (changed === 'Area' || changed === 'Territory' || changed === 'DB Name') {
+                if (selectedFilters['DB Name'] === 'All DBs') {
+                    updateSelectOptions(dffNameSelect, ['Select DB Name First'], 'DFF Name');
+                    dffNameSelect.disabled = true;
+                    dffNameSelect.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    const dffs = ['All DFFs', ...new Set(srs.map(s => s.dffName).sort())];
+                    updateSelectOptions(dffNameSelect, dffs, 'DFF Name');
+                    dffNameSelect.disabled = false;
+                    dffNameSelect.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        function updateSelectOptions(select, options, key) {
+            const current = selectedFilters[key];
+            select.innerHTML = '';
+            options.forEach(opt => { const el = document.createElement('option'); el.value = opt; el.textContent = opt; select.appendChild(el); });
+            select.value = options.includes(current) ? current : options[0];
+            selectedFilters[key] = select.value;
+        }
+
+        function initializeTabs() {
+            const tabs = {
+                'tab-territory': { panel: 'panel-territory', chart: 'territory-chart-container', srPanel: 'visuals-panel-main', dbChart: 'db-chart-container', srVis: 'visuals-panel-sr' },
+                'tab-db': { panel: 'panel-db', chart: 'db-chart-container', srPanel: 'visuals-panel-main', hideChart: 'territory-chart-container', srVis: 'visuals-panel-sr' },
+                'tab-sr': { panel: 'panel-sr', srVis: 'visuals-panel-sr', hideMain: 'visuals-panel-main', hideT: 'panel-territory', hideD: 'panel-db' }
+            };
+            Object.keys(tabs).forEach(tabId => {
+                document.getElementById(tabId).addEventListener('click', () => {
+                    document.querySelectorAll('.tab-button').forEach(b => { b.classList.remove('tab-active'); b.classList.add('tab-inactive'); });
+                    document.getElementById(tabId).classList.add('tab-active');
+                    document.getElementById(tabId).classList.remove('tab-inactive');
+                    ['panel-territory', 'panel-db', 'panel-sr', 'territory-chart-container', 'db-chart-container', 'visuals-panel-main', 'visuals-panel-sr'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+                    if (tabId === 'tab-territory') {
+                        document.getElementById('panel-territory').style.display = 'block';
+                        document.getElementById('territory-chart-container').style.display = 'block';
+                        document.getElementById('visuals-panel-main').style.display = 'grid';
+                    } else if (tabId === 'tab-db') {
+                        document.getElementById('panel-db').style.display = 'block';
+                        document.getElementById('db-chart-container').style.display = 'block';
+                        document.getElementById('visuals-panel-main').style.display = 'grid';
+                    } else {
+                        document.getElementById('panel-sr').style.display = 'block';
+                        document.getElementById('visuals-panel-sr').style.display = 'grid';
+                    }
+                    applyFilters();
+                });
+            });
+        }
+
+        function updateKpiData(totals) {
+            const newKpiData = {
+                timeElapsed: { label: "Time Elapsed", percentage: timeElapsedPercent, valueText: daysPassed + " Working Days Passed", rag: { color: 'fill-blue', border: 'border-blue', text: 'Benchmark', textColor: 'text-blue', ring: 'ring-blue' }, isBenchmark: true },
+                mtdStt: { label: "MTD STT Ach", percentage: totals.sttAchPercent, unit: "Lac", target: totals.sttTgt, achieved: totals.sttAch },
+                mtdErc: { label: "MTD ERC Ach", percentage: totals.ercAchPercent, unit: "Stores", target: totals.ercTgt, achieved: totals.ercAch },
+                sfTbr: { label: "Premium TP ERC", percentage: (totals.sfTbrTgt > 0 ? (totals.sfTbrAch/totals.sfTbrTgt)*100 : 0), unit: "Stores", target: totals.sfTbrTgt, achieved: totals.sfTbrAch },
+                premiumTp: { label: "Premium TP Ach", percentage: totals.premiumSkuAchPercent, unit: "Lac", target: totals.premiumSkuGoal, achieved: totals.premiumSkuAch }
+            };
+            ['mtdStt', 'mtdErc', 'sfTbr', 'premiumTp'].forEach(k => newKpiData[k].rag = getRAGStatus(newKpiData[k].percentage));
+            return newKpiData;
+        }
+
+        function animateValue(obj, start, end, duration, isPercentage = false) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                let current = start + (end - start) * easeProgress;
+                if (isPercentage) obj.innerHTML = current.toFixed(2) + '%';
+                else obj.innerHTML = current.toLocaleString('en-US', { maximumFractionDigits: 2 });
+                if (progress < 1) window.requestAnimationFrame(step);
+                else obj.innerHTML = isPercentage ? end.toFixed(2) + '%' : end.toFixed(2) + '%'; 
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function createKpiCard(kpi, index) {
+            const rag = kpi.rag;
+            let mainValue = kpi.percentage; 
+            let subContent = kpi.isBenchmark ? `<p class="text-sm text-gray-500 mt-2 font-medium">${kpi.valueText}</p>` : '';
+            if (!kpi.isBenchmark) {
+                const bal = kpi.target - kpi.achieved;
+                const diff = kpi.percentage - timeElapsedPercent;
+                const diffHtml = `<div class="flex justify-between items-center text-gray-600"><span class="text-xs font-medium">vs. Time Elapsed:</span><span class="font-bold text-sm ${diff < 0 ? 'text-red-600' : 'text-green-600'}">${diff > 0 ? '+' : ''}${diff.toFixed(2)}%</span></div>`;
+                subContent = `<div class="mt-3 pt-3 border-t border-gray-100 space-y-1 text-sm">${diffHtml}<div class="space-y-1 pt-1 border-t border-gray-100"><div class="flex justify-between text-gray-600"><span class="text-xs">TGT:</span><span class="font-bold text-gray-700">${formatValue(kpi.target, kpi.unit)}</span></div><div class="flex justify-between text-gray-600"><span class="text-xs">Ach:</span><span class="font-bold ${rag.textColor}">${formatValue(kpi.achieved, kpi.unit)}</span></div><div class="flex justify-between text-gray-600"><span class="text-xs">Bal:</span><span class="font-bold ${bal > 0 ? 'text-red-500' : 'text-gray-500'}">${formatValue(bal, kpi.unit)}</span></div></div></div>`;
+            }
+            const delay = index * 100; 
+            return `<div class="bg-white p-6 rounded-xl shadow-xl border border-gray-100 ${kpi.isBenchmark ? 'col-span-2 md:col-span-1' : ''} animate-fade-in-up hover-scale" style="animation-delay: ${delay}ms"><div class="flex items-center justify-between mb-2"><p class="text-sm font-medium text-gray-500">${kpi.label}</p><span class="w-3 h-3 rounded-full ${rag.color.replace('fill-', 'bg-')} ring-2 ring-offset-2 ${rag.ring}"></span></div><div class="text-3xl md:text-4xl font-extrabold mt-1 ${rag.textColor} kpi-value" data-target="${mainValue}">0.00%</div><div class="gauge-meter mt-4 mb-3"><div class="gauge-fill ${rag.color}" style="width: 0%" data-width="${Math.min(100, kpi.percentage).toFixed(2)}%"></div></div>${subContent}</div>`;
+        }
+
+        function populateKpiCards(kpiData) {
+            const container = document.getElementById('kpi-cards');
+            container.innerHTML = '';
+            const keys = ['timeElapsed', 'mtdStt', 'mtdErc', 'sfTbr', 'premiumTp'];
+            keys.forEach((key, index) => { if (kpiData[key]) container.insertAdjacentHTML('beforeend', createKpiCard(kpiData[key], index)); });
+            setTimeout(() => {
+                document.querySelectorAll('.kpi-value').forEach(el => { const target = parseFloat(el.getAttribute('data-target')); animateValue(el, 0, target, 1000, true); });
+                document.querySelectorAll('.gauge-fill').forEach(el => { const width = el.getAttribute('data-width'); el.style.width = width; });
+            }, 100);
+        }
+
+        function populateTable(id, data, nameKey, subKey, isSr = false) {
+            const tbody = document.getElementById(id);
+            const table = tbody.closest('table');
+            if (table.tFoot) table.tFoot.remove();
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                // Adjust colspan based on table type to prevent layout breaks
+                const colSpan = isSr ? 13 : 15; 
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-4 text-gray-500">No data found.</td></tr>`;
+                return;
+            }
+
+            data.sort((a, b) => b.sttAchPercent - a.sttAchPercent).forEach((row, index) => {
+                const sttC = getRAGStatus(row.sttAchPercent).textColor;
+                const ercC = getRAGStatus(row.ercAchPercent).textColor;
+                const pskuC = getRAGStatus(row.premiumSkuAchPercent).textColor;
+                const sfC = getRAGStatus(row.sfTbrAchPercent).textColor;
+                const tdpC = getRAGStatus(row.tdp1AchPercent).textColor;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50 transition-colors duration-200';
+                tr.style.opacity = '0';
+                tr.style.animation = `fadeInUp 0.3s ease-out forwards`;
+                tr.style.animationDelay = `${index * 0.02}s`; 
+
+                // Conditional PTP ERC Block
+                // If DFF (isSr), show only Ach. Else show TGT, Ach, %.
+                let ptpBlock = '';
+                if (isSr) {
+                    // DFF View: Only Achievement (1 column) matching static HTML
+                    ptpBlock = `<td class="px-3 py-3 text-center text-sm font-medium ${sfC}">${formatCount(row.sfTbrAch)}</td>`;
+                } else {
+                    // Territory/DB View: Target, Achievement, % (3 columns)
+                    ptpBlock = `
+                        <td class="px-3 py-3 text-center text-sm text-gray-500">${formatCount(row.sfTbrTgt)}</td>
+                        <td class="px-3 py-3 text-center text-sm font-medium ${sfC}">${formatCount(row.sfTbrAch)}</td>
+                        <td class="px-3 py-3 text-center text-sm font-bold ${sfC}">${row.sfTbrAchPercent.toFixed(2)}%</td>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white z-10 shadow-sm">${row[nameKey]}<div class="text-xs text-gray-500">${row[subKey] || ''}</div></td>
+                    <td class="px-3 py-3 text-center text-sm text-gray-500">${formatInLac(row.sttTgt)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-medium ${sttC}">${formatInLac(row.sttAch)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-bold ${sttC}">${row.sttAchPercent.toFixed(2)}%</td>
+                    <td class="px-3 py-3 text-center text-sm font-medium ${tdpC}">${formatInLac(row.tdp1Ach)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-bold ${tdpC}">${row.tdp1AchPercent.toFixed(2)}%</td>
+                    <td class="px-3 py-3 text-center text-sm text-gray-500">${formatCount(row.ercTgt)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-medium ${ercC}">${formatCount(row.ercAch)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-bold ${ercC}">${row.ercAchPercent.toFixed(2)}%</td>
+                    ${ptpBlock}
+                    <td class="px-3 py-3 text-center text-sm text-gray-500">${formatInLac(row.premiumSkuGoal)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-medium ${pskuC}">${formatInLac(row.premiumSkuAch)}</td>
+                    <td class="px-3 py-3 text-center text-sm font-bold ${pskuC}">${row.premiumSkuAchPercent.toFixed(2)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const t = calculateGrandTotals(data);
+            const foot = document.createElement('tfoot');
+            foot.className = 'bg-gray-100 font-bold border-t-2 border-gray-300 animate-fade-in';
+            
+            // Note: We don't overwrite headers anymore since static HTML is correct for all tables now
+            
+            // Conditional Footer PTP Block
+            let footerPtpBlock = '';
+            if (isSr) {
+                 footerPtpBlock = `<td class="px-3 py-3 text-center text-gray-900">${formatCount(t.sfTbrAch)}</td>`;
+            } else {
+                 footerPtpBlock = `
+                    <td class="px-3 py-3 text-center text-gray-700">${formatCount(t.sfTbrTgt)}</td>
+                    <td class="px-3 py-3 text-center text-gray-900">${formatCount(t.sfTbrAch)}</td>
+                    <td class="px-3 py-3 text-center ${getRAGStatus(t.sfTbrAchPercent).textColor}">${t.sfTbrAchPercent.toFixed(2)}%</td>
+                 `;
+            }
+
+            foot.innerHTML = `<tr>
+                <td class="px-3 py-3 sticky left-0 bg-gray-100 z-10">GRAND TOTAL</td>
+                <td class="px-3 py-3 text-center text-gray-700">${formatInLac(t.sttTgt)}</td>
+                <td class="px-3 py-3 text-center text-gray-900">${formatInLac(t.sttAch)}</td>
+                <td class="px-3 py-3 text-center ${getRAGStatus(t.sttAchPercent).textColor}">${t.sttAchPercent.toFixed(2)}%</td>
+                <td class="px-3 py-3 text-center text-gray-900">${formatInLac(t.tdp1Ach)}</td>
+                <td class="px-3 py-3 text-center ${getRAGStatus(t.tdp1AchPercent).textColor}">${t.tdp1AchPercent.toFixed(2)}%</td>
+                <td class="px-3 py-3 text-center text-gray-700">${formatCount(t.ercTgt)}</td>
+                <td class="px-3 py-3 text-center text-gray-900">${formatCount(t.ercAch)}</td>
+                <td class="px-3 py-3 text-center ${getRAGStatus(t.ercAchPercent).textColor}">${t.ercAchPercent.toFixed(2)}%</td>
+                ${footerPtpBlock}
+                <td class="px-3 py-3 text-center text-gray-700">${formatInLac(t.premiumSkuGoal)}</td>
+                <td class="px-3 py-3 text-center text-gray-900">${formatInLac(t.premiumSkuAch)}</td>
+                <td class="px-3 py-3 text-center ${getRAGStatus(t.premiumSkuAchPercent).textColor}">${t.premiumSkuAchPercent.toFixed(2)}%</td>
+            </tr>`;
+            table.appendChild(foot);
+        }
+
+        function createBarChart(containerId, dataArray, labelKey, subKey, isBottom = false) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (dataArray.length === 0) { container.innerHTML = '<div class="text-center py-8 text-gray-500">No data</div>'; return; }
+
+            let sortedData = [...dataArray];
+            if (isBottom) sortedData.sort((a,b) => a.sttAchPercent - b.sttAchPercent);
+            else sortedData.sort((a,b) => b.sttAchPercent - a.sttAchPercent);
+
+            sortedData.forEach((d, i) => {
+                const rag = getRAGStatus(d.sttAchPercent);
+                const width = Math.min(100, d.sttAchPercent).toFixed(2);
+                const gap = d.sttAchPercent - timeElapsedPercent;
+                const rank = d.displayRank || (i + 1);
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center text-sm animate-fade-in-up';
+                item.style.animationDelay = `${i * 0.05}s`; 
+
+                item.innerHTML = `
+                    <div class="w-1/4 truncate mr-4">
+                        <div class="font-bold text-gray-900 truncate">#${rank} ${d[labelKey]}</div>
+                        <div class="text-xs text-gray-500 truncate">${d[subKey] || ''}</div>
+                    </div>
+                    <div class="w-3/4 bg-gray-200 rounded-full h-8 flex items-center relative overflow-hidden">
+                        <div class="absolute h-full w-[2px] bg-[#0060E5] border-l border-dashed border-[#0060E5] z-20" style="left: ${timeElapsedPercent}%"></div>
+                        <div class="bar-fill h-full rounded-full flex items-center justify-end pr-2 text-white font-bold text-xs ${rag.color} z-10" style="width: 0%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);" data-width="${width}%">
+                            ${d.sttAchPercent > 15 ? d.sttAchPercent.toFixed(1) + '%' : ''}
+                        </div>
+                        <span class="absolute right-2 text-xs font-bold ${gap >= 0 ? 'text-[#008848]' : 'text-[#F33131]'} z-30">GAP: ${gap > 0 ? '+' : ''}${gap.toFixed(2)}%</span>
+                         ${d.sttAchPercent <= 15 ? `<span class="absolute left-2 text-xs font-bold ${rag.textColor} z-30">${d.sttAchPercent.toFixed(1)}%</span>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+
+            setTimeout(() => {
+                container.querySelectorAll('.bar-fill').forEach(el => { el.style.width = el.getAttribute('data-width'); });
+            }, 50);
+        }
+
+        function populateTerritoryChart(data) { createBarChart('stt-chart', data, 'territory', 'tm'); }
+        function populateDbChart(data) { createBarChart('db-stt-chart', data, 'dhName', 'territory'); }
+        function populateTopBottomSrCharts(data) {
+            const sorted = [...data].sort((a,b) => b.sttAchPercent - a.sttAchPercent);
+            sorted.forEach((d, i) => d.displayRank = i + 1);
+            createBarChart('top-10-sr-chart', sorted.slice(0, 10), 'dffName', 'dhName');
+            createBarChart('bottom-10-sr-chart', sorted.slice(-10), 'dffName', 'dhName', true);
+        }
+
+        function updateSrStatus(data) {
+            const status = { green: 0, amber: 0, red: 0, total: data.length };
+            data.forEach(d => {
+                const s = getRAGStatus(d.sttAchPercent).text;
+                if(s==='Green') status.green++; else if(s==='Amber') status.amber++; else status.red++;
+            });
+            renderHealthBar('sr-health', 'DFF', status);
+        }
+
+        function updateDbStatus(data) {
+            const status = { green: 0, amber: 0, red: 0, total: data.length };
+            data.forEach(d => {
+                const s = getRAGStatus(d.sttAchPercent).text;
+                if(s==='Green') status.green++; else if(s==='Amber') status.amber++; else status.red++;
+            });
+            renderHealthBar('db-health', 'DB', status);
+        }
+
+        function renderHealthBar(id, label, s) {
+            const gp = s.total > 0 ? (s.green/s.total)*100 : 0;
+            const ap = s.total > 0 ? (s.amber/s.total)*100 : 0;
+            const rp = s.total > 0 ? (s.red/s.total)*100 : 0;
+            
+            document.getElementById(id).innerHTML = `
+                <h3 class="text-md font-semibold text-gray-700 mb-2">${label} Status (Total: ${s.total})</h3>
+                <div class="flex h-6 rounded-full overflow-hidden text-xs font-semibold animate-fade-in">
+                    <div class="chart-bar fill-green text-center text-white p-1" style="width: 0%; transition: width 1s ease-out;">${s.green || ''}</div>
+                    <div class="chart-bar fill-amber text-center text-white p-1" style="width: 0%; transition: width 1s ease-out;">${s.amber || ''}</div>
+                    <div class="chart-bar fill-red text-center text-white p-1" style="width: 0%; transition: width 1s ease-out;">${s.red || ''}</div>
+                </div>
+                <div class="flex justify-between text-xs mt-1 animate-fade-in">
+                    <span class="text-green">Above 90%: ${s.green}</span>
+                    <span class="text-amber">85-90%: ${s.amber}</span>
+                    <span class="text-red">Below 85%: ${s.red}</span>
+                </div>
+            `;
+            setTimeout(() => {
+                const bars = document.getElementById(id).querySelectorAll('.chart-bar');
+                if(bars[0]) bars[0].style.width = gp + '%';
+                if(bars[1]) bars[1].style.width = ap + '%';
+                if(bars[2]) bars[2].style.width = rp + '%';
+            }, 100);
+        }
+
+        function showFlashMessage() {
+            const el = document.getElementById('flash-notification');
+            const titleEl = el.querySelector('h3');
+            const msgEl = el.querySelector('p');
+
+            const hour = new Date().getHours();
+            let greeting = 'Good Morning';
+            if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
+            else if (hour >= 17 && hour < 21) greeting = 'Good Evening';
+            else if (hour >= 21 || hour < 5) greeting = 'Good Night';
+
+            titleEl.textContent = greeting + '!';
+            msgEl.textContent = "Welcome back to your dashboard.";
+
+            setTimeout(() => { el.classList.remove('-translate-y-full'); }, 1000); 
+            setTimeout(() => { el.classList.add('-translate-y-full'); }, 9000);
+        }
+
+        initDashboard();
+        initializeTabs();
+        initializeTrendButtons();
+        showFlashMessage();
+
+    </script>
+</body>
+</html>
