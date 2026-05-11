@@ -257,7 +257,9 @@
                 } else {
                   await signInAnonymously(auth);
                 }
-              } catch (err) { console.error("Auth Error:", err); }
+              } catch (err) { 
+                console.warn("Firebase Auth disabled or keys missing. Proceeding anonymously locally.");
+              }
             };
             initAuth();
             const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
@@ -433,7 +435,7 @@
             try {
               // 1. Prepare the payload
               const payload = {
-                userId: user.uid,
+                userId: user?.uid || 'external_user',
                 accountName: selectedOutletDetails.accountName,
                 outletCode: selectedOutletDetails.outletCode,
                 outletName: selectedOutletDetails.outletName,
@@ -449,25 +451,24 @@
                 dateString: new Date().toISOString().split('T')[0]
               };
 
-              // 2. Save locally to Firebase Database as a reliable backup
-              const visitsRef = collection(db, 'artifacts', appId, 'public', 'data', 'mt_visits');
-              await addDoc(visitsRef, payload);
+              // 2. Save locally to Firebase Database as a reliable backup (Gracefully skip if dummy keys fail on GitHub)
+              try {
+                const visitsRef = collection(db, 'artifacts', appId, 'public', 'data', 'mt_visits');
+                await addDoc(visitsRef, payload);
+              } catch (fbErr) {
+                console.warn("Local Firebase save skipped (using dummy keys). Proceeding directly to Google Sheets...");
+              }
 
               // 3. Push to Google Sheets via Apps Script Web App
-              try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                  method: 'POST',
-                  mode: 'no-cors', // Required to bypass CORS block for Google Apps Script
-                  redirect: 'follow', // Ensure it follows Google's internal redirects
-                  headers: {
-                    'Content-Type': 'text/plain', // Use text/plain for no-cors to prevent preflight block
-                  },
-                  body: JSON.stringify(payload)
-                });
-              } catch (sheetError) {
-                console.error("Failed to sync to Google Sheets, but saved to DB:", sheetError);
-                // We log the error but do not block the success message since the core DB save worked
-              }
+              await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Required to bypass CORS block for Google Apps Script
+                redirect: 'follow', // Ensure it follows Google's internal redirects
+                headers: {
+                  'Content-Type': 'text/plain', // Use text/plain for no-cors to prevent preflight block
+                },
+                body: JSON.stringify(payload)
+              });
 
               setSuccessMsg('Uploaded successfully!');
               setTimeout(() => {
@@ -476,7 +477,9 @@
                 setTotalShelf(''); setColgateShelf('');
                 setImage(null); setPreview(null);
               }, 3000);
-            } catch (err) { setErrorMsg("Sync failed."); }
+            } catch (err) { 
+              setErrorMsg("Sync failed: " + err.message); 
+            }
             setIsUploading(false);
           };
 
@@ -743,7 +746,6 @@
           }, [baseFilteredData, filterStatus]);
 
           const updateAuditStatus = async (id, status, visitData) => {
-            if(!user) return;
             try {
               // 1. Optimistically update UI so it feels instant
               setVisits(prevVisits => prevVisits.map(v => v.id === id ? { ...v, status } : v));
