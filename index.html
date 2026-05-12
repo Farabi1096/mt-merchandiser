@@ -46,144 +46,41 @@
         
         // --- YOUR CODE STARTS HERE ---
         import React, { useState, useEffect, useMemo } from 'react';
-        import { Camera, CheckCircle, XCircle, Home, LayoutDashboard, MapPin, Building, ChevronLeft, Image as ImageIcon, Filter, Check, X, Clock, Search, Loader2, Package, Tags, AlertCircle, Lock, KeyRound, Store, ClipboardCheck, TrendingUp, TrendingDown, Calendar, Maximize2, Download, CalendarDays, Target, User, Calendar as CalendarIcon, Hash } from 'lucide-react';
+        import { Camera, CheckCircle, XCircle, Home, LayoutDashboard, MapPin, Building, ChevronLeft, Image as ImageIcon, Filter, Check, X, Clock, Search, Loader2, Package, Tags, AlertCircle, Lock, KeyRound, Store, ClipboardCheck, TrendingUp, TrendingDown, Calendar, Maximize2, Download, CalendarDays, Target, User, Calendar as CalendarIcon, Hash, WifiOff } from 'lucide-react';
 
-        // --- GOOGLE APPS SCRIPT URL (For uploading visits & fetching audit data) ---
+        // --- APPS SCRIPT URL ---
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx9wMmEGqfi_IPVoyvDIhW0S__SeVqdmPlQTiO3qlBSP63ddbaHkz3EA-Iam0eeP2BBNw/exec';
 
-        // --- MODERN TRADE MASTER DATA (HARDCODED) ---
-        const OUTLET_MASTER = [
-          // Subah Tabassum
-          { accountName: "Shwapno", outletCode: "SHW-MIR-01", outletName: "Taltola Bus Stand", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Wednesday", merchandiserName: "Subah Tabassum" },
-          { accountName: "Shwapno", outletCode: "SHW-MIR-02", outletName: "West Kafrul", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Thursday", merchandiserName: "Subah Tabassum" },
-          { accountName: "Shwapno", outletCode: "F694", outletName: "Bhanga Bridge 60 Feet Outlet", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Friday", merchandiserName: "Subah Tabassum" },
-          { accountName: "Shwapno", outletCode: "SHW-MIR-03", outletName: "Kazipara 2", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Saturday", merchandiserName: "Subah Tabassum" },
-          { accountName: "Shwapno", outletCode: "F549", outletName: "Itkhola Bazar East Kazipara", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Sunday", merchandiserName: "Subah Tabassum" },
-          { accountName: "Shwapno", outletCode: "F085", outletName: "Uttar Kazipara Outlet", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Monday", merchandiserName: "Subah Tabassum" },
+        // --- PUBLISHED GOOGLE SHEET CSV URLs ---
+        const PJP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTYohbwOY-A-afxjnYfiLuHnd6CQ7uqDDJc-Qze5VPkdYbjaJi_7C_8WKC0_u1hm6mxBk-IaUR4PG8w/pub?gid=698262353&single=true&output=csv';
+        const SALES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTYohbwOY-A-afxjnYfiLuHnd6CQ7uqDDJc-Qze5VPkdYbjaJi_7C_8WKC0_u1hm6mxBk-IaUR4PG8w/pub?gid=0&single=true&output=csv';
 
-          // Mukta Rahman
-          { accountName: "Shwapno", outletCode: "SHW-MIR-04", outletName: "Mazar Road, Mirpur 1", territoryName: "Mirpur/Savar", routeName: "Mirpur 1", visitDay: "Monday", merchandiserName: "Mukta Rahman" },
-          { accountName: "Shwapno", outletCode: "SHW-MIR-05", outletName: "Tolarbag, Mirpur 1", territoryName: "Mirpur/Savar", routeName: "Mirpur 1", visitDay: "Tuesday", merchandiserName: "Mukta Rahman" },
-          { accountName: "Shwapno", outletCode: "SHW-MIR-06", outletName: "Ahmednagar", territoryName: "Mirpur/Savar", routeName: "Mirpur 1", visitDay: "Wednesday", merchandiserName: "Mukta Rahman" },
-          { accountName: "Shwapno", outletCode: "SHW-MIR-07", outletName: "60 ft borobag, Mirpur 2", territoryName: "Mirpur/Savar", routeName: "Mirpur 0", visitDay: "Friday", merchandiserName: "Mukta Rahman" },
+        // ULTRA-ROBUST CSV FETCHER (Bypasses Firewalls, CORS, and Adblockers)
+        const fetchCSVData = async (url) => {
+          // Array of methods to try in order
+          const methods = [
+            url, // Attempt 1: Direct fetch
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, // Attempt 2: AllOrigins raw
+            `https://corsproxy.io/?${encodeURIComponent(url)}`, // Attempt 3: CorsProxy.io
+            `https://thingproxy.freeboard.io/fetch/${url}` // Attempt 4: ThingProxy
+          ];
 
-          // Pinky Akter Shila
-          { accountName: "Shwapno", outletCode: "D065", outletName: "Mirpur -6 New", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Tuesday", merchandiserName: "Pinky Akter Shila" },
-          { accountName: "Shwapno", outletCode: "F422", outletName: "C -Block Pallabi Outlet", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Saturday", merchandiserName: "Pinky Akter Shila" },
-          { accountName: "Shwapno", outletCode: "F523", outletName: "Shopnonagar Pallabi", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Sunday", merchandiserName: "Pinky Akter Shila" },
-          { accountName: "Shwapno", outletCode: "SHW-MIR-08", outletName: "Playing Ground, Mirpur 12", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Monday", merchandiserName: "Pinky Akter Shila" },
-
-          // Maniurnahar (Akhi)
-          { accountName: "Shwapno", outletCode: "F465", outletName: "Milk Vita Mor Mirpur-7", territoryName: "Mirpur/Savar", routeName: "Mirpur 3", visitDay: "Friday", merchandiserName: "Maniurnahar (Akhi)" },
-          { accountName: "Shwapno", outletCode: "F506", outletName: "Block-D Mirpur 15", territoryName: "Mirpur/Savar", routeName: "Mirpur 5", visitDay: "Sunday", merchandiserName: "Maniurnahar (Akhi)" },
-          { accountName: "Shwapno", outletCode: "F050", outletName: "Mirpur 10, Block C", territoryName: "Mirpur/Savar", routeName: "Mirpur 5", visitDay: "Monday", merchandiserName: "Maniurnahar (Akhi)" },
-
-          // Al Mamun
-          { accountName: "Shwapno", outletCode: "F438", outletName: "Poschim Bhasantek", territoryName: "Mirpur/Savar", routeName: "Mirpur 4", visitDay: "Thursday", merchandiserName: "Al Mamun" },
-          { accountName: "Shwapno", outletCode: "SHW-NIK-01", outletName: "Khilkhet Lake City", territoryName: "Nikunja 1", routeName: "Khilkhet", visitDay: "Friday", merchandiserName: "Al Mamun" },
-          { accountName: "Shwapno", outletCode: "F392", outletName: "Joar Shahara Outlet", territoryName: "Nikunja 1", routeName: "Joar Shahara", visitDay: "Saturday", merchandiserName: "Al Mamun" },
-          { accountName: "Shwapno", outletCode: "F536", outletName: "Namapara Kawla", territoryName: "Nikunja 1", routeName: "Kawla", visitDay: "Sunday", merchandiserName: "Al Mamun" },
-
-          // Emon Kawser Shanto
-          { accountName: "Shwapno", outletCode: "SHW-BAN-01", outletName: "North Banasree B Block", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Sunday", merchandiserName: "Emon Kawser Shanto" },
-          { accountName: "Shwapno", outletCode: "F112", outletName: "South Banasre", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Monday", merchandiserName: "Emon Kawser Shanto" },
-          { accountName: "Shwapno", outletCode: "F013", outletName: "Banasree H", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Tuesday", merchandiserName: "Emon Kawser Shanto" },
-          { accountName: "Shwapno", outletCode: "F595", outletName: "Block-C Banashree", territoryName: "Banasree 1", routeName: "Banasree", visitDay: "Wednesday", merchandiserName: "Emon Kawser Shanto" },
-
-          // Mehedi Hasan Khan Anik
-          { accountName: "Shwapno", outletCode: "SHW-GUL-04", outletName: "Gulshan Badda Link Road", territoryName: "Gulshan 4", routeName: "Gulshan", visitDay: "Saturday", merchandiserName: "Mehedi Hasan Khan Anik" },
-          { accountName: "Shwapno", outletCode: "SHW-BAD-01", outletName: "Badda Joy Bangla Mor", territoryName: "Badda 1", routeName: "Badda", visitDay: "Thursday", merchandiserName: "Mehedi Hasan Khan Anik" },
-          { accountName: "Shwapno", outletCode: "SHW-BAD-02", outletName: "Uttar Badda", territoryName: "Badda 1", routeName: "Badda", visitDay: "Friday", merchandiserName: "Mehedi Hasan Khan Anik" },
-          { accountName: "Shwapno", outletCode: "F497", outletName: "South Badda Bazar", territoryName: "Badda 1", routeName: "Badda", visitDay: "Monday", merchandiserName: "Mehedi Hasan Khan Anik" },
-
-          // Md. Rakibul
-          { accountName: "Shwapno", outletCode: "SHW-KHI-01", outletName: "Central Bashabo", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Monday", merchandiserName: "Md. Rakibul" },
-          { accountName: "Shwapno", outletCode: "D080", outletName: "Mugda Outlet", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Tuesday", merchandiserName: "Md. Rakibul" },
-          { accountName: "Shwapno", outletCode: "F579", outletName: "Manda Outlet", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Wednesday", merchandiserName: "Md. Rakibul" },
-          { accountName: "Shwapno", outletCode: "F477", outletName: "Kadamtola Basabo", territoryName: "Khilgaon 1", routeName: "Khilgaon", visitDay: "Thursday", merchandiserName: "Md. Rakibul" },
-
-          // Mr. Romzan Hossin
-          { accountName: "Shwapno", outletCode: "F483", outletName: "Dakshin Kutubkahli Jatrabari", territoryName: "CTG Road 2", routeName: "Jatrabari", visitDay: "Friday", merchandiserName: "Mr. Romzan Hossin" },
-          { accountName: "Shwapno", outletCode: "SHW-JAT-02", outletName: "Jatrabari 2", territoryName: "CTG Road 1", routeName: "Jatrabari", visitDay: "Saturday", merchandiserName: "Mr. Romzan Hossin" },
-          { accountName: "Shwapno", outletCode: "SHW-JAT-03", outletName: "Sontek Kajla", territoryName: "CTG Road 1", routeName: "Jatrabari", visitDay: "Monday", merchandiserName: "Mr. Romzan Hossin" },
-          { accountName: "Shwapno", outletCode: "SHW-JAT-04", outletName: "Paterbagh", territoryName: "CTG Road 1", routeName: "Jatrabari", visitDay: "Tuesday", merchandiserName: "Mr. Romzan Hossin" },
-
-          // Rafiqul Islam Noyan
-          { accountName: "Shwapno", outletCode: "D014", outletName: "Narayangong", territoryName: "Ngonj 1", routeName: "Narayanganj", visitDay: "Wednesday", merchandiserName: "Rafiqul Islam Noyan" },
-          { accountName: "Shwapno", outletCode: "F792", outletName: "Mograpara, Sonargaon", territoryName: "Ngonj 1", routeName: "Sonargaon", visitDay: "Friday", merchandiserName: "Rafiqul Islam Noyan" },
-          { accountName: "Shwapno", outletCode: "SHW-NGO-01", outletName: "Panchabati Narayanganj", territoryName: "Ngonj 1", routeName: "Narayanganj", visitDay: "Saturday", merchandiserName: "Rafiqul Islam Noyan" },
-          { accountName: "Shwapno", outletCode: "F788", outletName: "Shantidhara R/A", territoryName: "Ngonj 1", routeName: "Narayanganj", visitDay: "Sunday", merchandiserName: "Rafiqul Islam Noyan" },
-
-          // Asif Uddin
-          { accountName: "Shwapno", outletCode: "F575", outletName: "Miabari Road Kuril", territoryName: "Rampura 1", routeName: "Kuril", visitDay: "Sunday", merchandiserName: "Asif Uddin" },
-          { accountName: "Shwapno", outletCode: "SHW-BAS-01", outletName: "Bashundhara G Block", territoryName: "Bashundhara 1", routeName: "Bashundhara", visitDay: "Monday", merchandiserName: "Asif Uddin" },
-          { accountName: "Shwapno", outletCode: "SHW-BAS-02", outletName: "Bashundhara Gate", territoryName: "Bashundhara 1", routeName: "Bashundhara", visitDay: "Tuesday", merchandiserName: "Asif Uddin" },
-
-          // Ripon Hossain
-          { accountName: "Shwapno", outletCode: "SHW-UTT-06", outletName: "Uttara 6", territoryName: "Uttara 1", routeName: "Uttara", visitDay: "Thursday", merchandiserName: "Ripon Hossain" },
-          { accountName: "Shwapno", outletCode: "F652", outletName: "Atipara Bazar Uttar Khan", territoryName: "Uttara 2", routeName: "Uttarkhan", visitDay: "Sunday", merchandiserName: "Ripon Hossain" },
-          { accountName: "Shwapno", outletCode: "SHW-UTT-01", outletName: "Court Bari", territoryName: "Uttara 1", routeName: "Uttara", visitDay: "Friday", merchandiserName: "Ripon Hossain" },
-
-          // Jannatul Ferdous
-          { accountName: "Shwapno", outletCode: "SHW-UTT-11", outletName: "Uttara-11", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Saturday", merchandiserName: "Jannatul Ferdous" },
-          { accountName: "Shwapno", outletCode: "F687", outletName: "Road-17 Uttara 11", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Sunday", merchandiserName: "Jannatul Ferdous" },
-          { accountName: "Shwapno", outletCode: "SHW-UTT-10", outletName: "Uttara 10 Outlet", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Tuesday", merchandiserName: "Jannatul Ferdous" },
-
-          // Khadizatul Sathi
-          { accountName: "Shwapno", outletCode: "D092", outletName: "Uttara-3", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Saturday", merchandiserName: "Khadizatul Sathi" },
-          { accountName: "Shwapno", outletCode: "F705", outletName: "Parker Mor Uttara 13", territoryName: "Uttara 4", routeName: "Uttara", visitDay: "Monday", merchandiserName: "Khadizatul Sathi" },
-          { accountName: "Shwapno", outletCode: "F481", outletName: "Sector 12, Road-3", territoryName: "Uttara 3", routeName: "Uttara", visitDay: "Tuesday", merchandiserName: "Khadizatul Sathi" },
-
-          // Umme Hani Sonia
-          { accountName: "Shwapno", outletCode: "SHW-ZIG-01", outletName: "Zigatola", territoryName: "Zigatola 1", routeName: "Zigatola", visitDay: "Thursday", merchandiserName: "Umme Hani Sonia" },
-          { accountName: "Shwapno", outletCode: "D112", outletName: "Dhanmondi Satmosid Road", territoryName: "Zigatola 1", routeName: "Dhanmondi", visitDay: "Friday", merchandiserName: "Umme Hani Sonia" },
-          { accountName: "Shwapno", outletCode: "F242", outletName: "Reayerbazar Outlet", territoryName: "Zigatola 1", routeName: "Rayerbazar", visitDay: "Saturday", merchandiserName: "Umme Hani Sonia" },
-
-          // Gias Uddin
-          { accountName: "Shwapno", outletCode: "SHW-GRE-01", outletName: "Panthapath", territoryName: "Green Road 1", routeName: "Panthapath", visitDay: "Wednesday", merchandiserName: "Gias Uddin" },
-          { accountName: "Shwapno", outletCode: "F524", outletName: "Box Culvert Road", territoryName: "Green Road 1", routeName: "Green Road", visitDay: "Thursday", merchandiserName: "Gias Uddin" },
-          { accountName: "Shwapno", outletCode: "SHW-GRE-02", outletName: "Elephant Road", territoryName: "Green Road 1", routeName: "Elephant Road", visitDay: "Friday", merchandiserName: "Gias Uddin" },
-
-          // Md. Rasel
-          { accountName: "Shwapno", outletCode: "SHW-MOG-01", outletName: "Eskaton", territoryName: "Mogbazar 1", routeName: "Mogbazar", visitDay: "Friday", merchandiserName: "Md. Rasel" },
-          { accountName: "Shwapno", outletCode: "F803", outletName: "Shantinagar Outlet", territoryName: "Malibag 1", routeName: "Shantinagar", visitDay: "Monday", merchandiserName: "Md. Rasel" },
-          { accountName: "Shwapno", outletCode: "SHW-MAL-01", outletName: "Malibag Rail Gate", territoryName: "Mogbazar 1", routeName: "Malibag", visitDay: "Saturday", merchandiserName: "Md. Rasel" },
-
-          // Shahrain Hossain Maruf
-          { accountName: "Shwapno", outletCode: "F484", outletName: "Commissioner Road Jurain", territoryName: "CTG Road 1", routeName: "Jurain", visitDay: "Friday", merchandiserName: "Shahrain Hossain Maruf" },
-          { accountName: "Shwapno", outletCode: "D078", outletName: "Hasnabad Outlet, Keranigonj", territoryName: "Old Dhaka 2", routeName: "Keranigonj", visitDay: "Saturday", merchandiserName: "Shahrain Hossain Maruf" },
-          { accountName: "Shwapno", outletCode: "F383", outletName: "Jinjira Keraniganj", territoryName: "Old Dhaka 2", routeName: "Keranigonj", visitDay: "Sunday", merchandiserName: "Shahrain Hossain Maruf" },
-
-          // Md Ismail
-          { accountName: "Shwapno", outletCode: "SHW-SAV-01", outletName: "Savar Cantonment", territoryName: "Savar 1", routeName: "Savar", visitDay: "Friday", merchandiserName: "Md Ismail" },
-          { accountName: "Shwapno", outletCode: "F584", outletName: "Bank Colony Savar", territoryName: "Savar 1", routeName: "Savar", visitDay: "Wednesday", merchandiserName: "Md Ismail" },
-          { accountName: "Shwapno", outletCode: "F182", outletName: "Hemayetpur", territoryName: "Savar 1", routeName: "Savar", visitDay: "Thursday", merchandiserName: "Md Ismail" },
-
-          // Omar Faruk
-          { accountName: "Shwapno", outletCode: "SHW-GAZ-01", outletName: "Tongi College Gate", territoryName: "Gazipur 1", routeName: "Tongi", visitDay: "Tuesday", merchandiserName: "Omar Faruk" },
-          { accountName: "Shwapno", outletCode: "F492", outletName: "Cheragali", territoryName: "Gazipur 1", routeName: "Tongi", visitDay: "Thursday", merchandiserName: "Omar Faruk" },
-          { accountName: "Shwapno", outletCode: "SHW-GAZ-02", outletName: "Auchpara", territoryName: "Gazipur 1", routeName: "Tongi", visitDay: "Friday", merchandiserName: "Omar Faruk" },
-
-          // Nayem Islam
-          { accountName: "Shwapno", outletCode: "SHW-GAZ-03", outletName: "Gazipur Chowrasta", territoryName: "Gazipur 3", routeName: "Gazipur", visitDay: "Wednesday", merchandiserName: "Nayem Islam" },
-          { accountName: "Shwapno", outletCode: "F500", outletName: "Barkat Sarani Joydebpur", territoryName: "Gazipur 3", routeName: "Joydebpur", visitDay: "Saturday", merchandiserName: "Nayem Islam" },
-          { accountName: "Shwapno", outletCode: "F629", outletName: "Jorpukur Joydebpur", territoryName: "Gazipur 3", routeName: "Joydebpur", visitDay: "Thursday", merchandiserName: "Nayem Islam" },
-
-          // Johura Akter Rita
-          { accountName: "Shwapno", outletCode: "SHW-RIN-01", outletName: "Shyamoli", territoryName: "Ring Road 1", routeName: "Ring Road", visitDay: "Saturday", merchandiserName: "Johura Akter Rita" },
-          { accountName: "Shwapno", outletCode: "F089", outletName: "Mohammadia Housing Society", territoryName: "Mohammadpur 1", routeName: "Mohammadpur", visitDay: "Monday", merchandiserName: "Johura Akter Rita" },
-          { accountName: "Shwapno", outletCode: "F710", outletName: "Uttar adabar", territoryName: "Mohammadpur 1", routeName: "Adabar", visitDay: "Tuesday", merchandiserName: "Johura Akter Rita" },
-
-          // Redoy Chandra Das
-          { accountName: "Shwapno", outletCode: "F686", outletName: "Nurjahan Road Mohammadpur", territoryName: "Mohammadpur 1", routeName: "Mohammadpur", visitDay: "Wednesday", merchandiserName: "Redoy Chandra Das" },
-          { accountName: "Shwapno", outletCode: "F180", outletName: "Mohammadpur Bosila", territoryName: "Mohammadpur 1", routeName: "Bosila", visitDay: "Tuesday", merchandiserName: "Redoy Chandra Das" },
-          { accountName: "Shwapno", outletCode: "F515", outletName: "Chandrima Model Town", territoryName: "Mohammadpur 1", routeName: "Mohammadpur", visitDay: "Thursday", merchandiserName: "Redoy Chandra Das" },
-
-          // Shekhe Al Akbor
-          { accountName: "Shwapno", outletCode: "SHW-CTG-01", outletName: "Gopibagh", territoryName: "CTG Road 1", routeName: "Gopibagh", visitDay: "Wednesday", merchandiserName: "Shekhe Al Akbor" },
-          { accountName: "Shwapno", outletCode: "SHW-CTG-02", outletName: "RK Mission Road", territoryName: "CTG Road 1", routeName: "RK Mission", visitDay: "Sunday", merchandiserName: "Shekhe Al Akbor" },
-          { accountName: "Shwapno", outletCode: "F551", outletName: "Maniknagar", territoryName: "CTG Road 1", routeName: "Maniknagar", visitDay: "Monday", merchandiserName: "Shekhe Al Akbor" }
-        ].sort((a, b) => a.outletName.localeCompare(b.outletName)); // Ascending Order
+          for (let i = 0; i < methods.length; i++) {
+            try {
+              const res = await fetch(methods[i], { cache: 'no-store' });
+              if (res.ok) {
+                const text = await res.text();
+                // Ensure it's actually CSV data and not a Google HTML error page
+                if (!text.trim().startsWith('<')) {
+                  return text;
+                }
+              }
+            } catch (e) {
+              console.warn(`Fetch method ${i + 1} failed. Trying next...`, e.message);
+            }
+          }
+          throw new Error("Network connection blocked. Please check your internet, VPN, or Adblocker.");
+        };
 
         const compressImage = (file) => {
           return new Promise((resolve) => {
@@ -206,13 +103,9 @@
           });
         };
 
-        // --- HELPER TO CONVERT GOOGLE DRIVE LINKS TO DIRECT IMAGE LINKS ---
         const getDirectImageUrl = (url) => {
           if (!url) return '';
-          // If it's already a base64 image or not a Google Drive link, return as is
           if (url.startsWith('data:image') || !url.includes('drive.google.com')) return url;
-          
-          // Extract the File ID from the Google Drive URL and convert to a thumbnail link
           const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
           if (match && match[1]) {
             return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
@@ -220,11 +113,80 @@
           return url;
         };
 
+        const getLocalTodayString = () => {
+          const d = new Date();
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        // Custom CSV Parser
+        const parseCSVLine = (text) => {
+          let row = [];
+          let inQuotes = false;
+          let val = '';
+          for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            if (char === '"' && text[i+1] === '"' && inQuotes) {
+              val += '"'; i++; 
+            } else if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              row.push(val); val = '';
+            } else {
+              val += char;
+            }
+          }
+          row.push(val);
+          return row.map(v => v.trim());
+        };
+
         function App() {
           const [view, setView] = useState('selection'); 
           const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
           const [passwordInput, setPasswordInput] = useState('');
           const [passwordError, setPasswordError] = useState('');
+          
+          const [outletMaster, setOutletMaster] = useState([]);
+          const [isMasterLoading, setIsMasterLoading] = useState(true);
+          const [masterError, setMasterError] = useState('');
+
+          // --- FETCH DYNAMIC MASTER DATA (PJP) FROM GOOGLE SHEETS CSV ---
+          useEffect(() => {
+            const fetchMasterData = async () => {
+              try {
+                const csvText = await fetchCSVData(PJP_CSV_URL);
+                
+                const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+                if (lines.length < 2) {
+                    throw new Error("CSV contains no usable data.");
+                }
+
+                const parsedData = [];
+                for (let i = 1; i < lines.length; i++) {
+                  const row = parseCSVLine(lines[i]);
+                  if (row[1] && row[1].trim() !== "") { 
+                    parsedData.push({
+                      accountName: row[0]?.trim() || "",
+                      outletCode: row[1]?.trim() || "", 
+                      outletName: row[2]?.trim() || "",
+                      territoryName: row[3]?.trim() || "",
+                      routeName: row[4]?.trim() || "",
+                      visitDay: row[5]?.trim() || "",
+                      merchandiserName: row[6]?.trim() || ""
+                    });
+                  }
+                }
+
+                parsedData.sort((a, b) => (a.outletName || '').localeCompare(b.outletName || ''));
+                setOutletMaster(parsedData);
+              } catch (error) {
+                console.error("Failed to fetch PJP master data:", error);
+                setMasterError(error.message);
+              } finally {
+                setIsMasterLoading(false);
+              }
+            };
+            fetchMasterData();
+          }, []);
 
           const handleDashboardAccess = () => setIsPasswordModalOpen(true);
 
@@ -239,6 +201,31 @@
               setPasswordError('Incorrect password.');
             }
           };
+
+          if (isMasterLoading) {
+            return (
+              <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
+                <Loader2 className="h-12 w-12 text-red-600 animate-spin mb-4" />
+                <h3 className="text-xl font-bold text-slate-800">Loading Configuration...</h3>
+                <p className="text-slate-500 text-sm mt-2">Fetching live PJP data from Google Sheets</p>
+              </div>
+            );
+          }
+
+          if (masterError) {
+            return (
+              <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans text-center">
+                <div className="bg-red-50 text-red-600 p-4 rounded-full mb-4 shadow-sm border border-red-100">
+                  <WifiOff className="h-10 w-10" />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 mb-2">Connection Failed</h3>
+                <p className="text-slate-500 text-sm max-w-sm mb-6">{masterError}</p>
+                <button onClick={() => window.location.reload()} className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg hover:bg-red-700 transition-all">
+                   Retry Connection
+                </button>
+              </div>
+            );
+          }
 
           if (view === 'selection') {
             return (
@@ -332,15 +319,15 @@
                   </div>
                 </div>
               </nav>
-              {view === 'merchandiser' ? <MerchandiserApp /> : <DashboardApp />}
+              {view === 'merchandiser' ? <MerchandiserApp outletMaster={outletMaster} /> : <DashboardApp outletMaster={outletMaster} />}
             </div>
           );
         }
 
         // ==========================================
-        // MERCHANDISER APP (MOBILE OPTIMIZED)
+        // MERCHANDISER APP
         // ==========================================
-        function MerchandiserApp() {
+        function MerchandiserApp({ outletMaster }) {
           const [merchandiser, setMerchandiser] = useState('');
           const [visitDay, setVisitDay] = useState('');
           const [accountName, setAccountName] = useState('');
@@ -352,18 +339,16 @@
           const [image, setImage] = useState(null);
           const [preview, setPreview] = useState(null);
           const [isUploading, setIsUploading] = useState(false);
-          const [successMsg, setSuccessMsg] = useState('');
+          const [isSuccess, setIsSuccess] = useState(false);
           const [errorMsg, setErrorMsg] = useState('');
 
-          // Cascading logic arrays (All alphabetically sorted) - USING HARDCODED OUTLET_MASTER
-          const merchandisers = useMemo(() => [...new Set(OUTLET_MASTER.map(o => o.merchandiserName?.trim()).filter(Boolean))].sort(), []);
-          const visitDays = useMemo(() => merchandiser ? [...new Set(OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser).map(o => o.visitDay?.trim()).filter(Boolean))].sort() : [], [merchandiser]);
-          const accounts = useMemo(() => visitDay ? [...new Set(OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay).map(o => o.accountName?.trim()).filter(Boolean))].sort() : [], [merchandiser, visitDay]);
-          const routes = useMemo(() => accountName ? [...new Set(OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay && o.accountName?.trim() === accountName).map(o => o.routeName?.trim()).filter(Boolean))].sort() : [], [merchandiser, visitDay, accountName]);
-          const outlets = useMemo(() => route ? OUTLET_MASTER.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay && o.accountName?.trim() === accountName && o.routeName?.trim() === route) : [], [merchandiser, visitDay, accountName, route]);
+          const merchandisers = useMemo(() => [...new Set(outletMaster.map(o => o.merchandiserName?.trim()).filter(Boolean))].sort(), [outletMaster]);
+          const visitDays = useMemo(() => merchandiser ? [...new Set(outletMaster.filter(o => o.merchandiserName?.trim() === merchandiser).map(o => o.visitDay?.trim()).filter(Boolean))].sort() : [], [merchandiser, outletMaster]);
+          const accounts = useMemo(() => visitDay ? [...new Set(outletMaster.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay).map(o => o.accountName?.trim()).filter(Boolean))].sort() : [], [merchandiser, visitDay, outletMaster]);
+          const routes = useMemo(() => accountName ? [...new Set(outletMaster.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay && o.accountName?.trim() === accountName).map(o => o.routeName?.trim()).filter(Boolean))].sort() : [], [merchandiser, visitDay, accountName, outletMaster]);
+          const outlets = useMemo(() => route ? outletMaster.filter(o => o.merchandiserName?.trim() === merchandiser && o.visitDay?.trim() === visitDay && o.accountName?.trim() === accountName && o.routeName?.trim() === route) : [], [merchandiser, visitDay, accountName, route, outletMaster]);
           
-          // Selected outlet full details
-          const selectedOutletDetails = useMemo(() => OUTLET_MASTER.find(o => o.outletCode === outletCode), [outletCode]);
+          const selectedOutletDetails = useMemo(() => outletMaster.find(o => String(o.outletCode) === String(outletCode)), [outletCode, outletMaster]);
 
           const handleImageChange = async (e) => {
             const file = e.target.files[0];
@@ -383,6 +368,16 @@
             if (fileInput) fileInput.value = '';
           };
 
+          const handleNewEntry = () => {
+            setIsSuccess(false);
+            setOutletCode('');
+            setTotalShelf(''); 
+            setColgateShelf('');
+            setImage(null); 
+            setPreview(null);
+            setErrorMsg('');
+          };
+
           const handleSubmit = async (e) => {
             e.preventDefault();
             if (isUploading) return; 
@@ -393,11 +388,10 @@
             
             setIsUploading(true);
             try {
-              // 1. Prepare the payload
               const payload = {
-                userId: 'external_user', // Firebase user removed
+                userId: 'external_user',
                 accountName: selectedOutletDetails.accountName,
-                outletCode: selectedOutletDetails.outletCode,
+                outletCode: String(selectedOutletDetails.outletCode),
                 outletName: selectedOutletDetails.outletName,
                 territoryName: selectedOutletDetails.territoryName,
                 routeName: selectedOutletDetails.routeName,
@@ -411,24 +405,15 @@
                 dateString: new Date().toISOString().split('T')[0]
               };
 
-              // 2. Push to Google Sheets via Apps Script Web App
               await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors', // Required to bypass CORS block for Google Apps Script
-                redirect: 'follow', // Ensure it follows Google's internal redirects
-                headers: {
-                  'Content-Type': 'text/plain', // Use text/plain for no-cors to prevent preflight block
-                },
+                mode: 'no-cors',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(payload)
               });
 
-              setSuccessMsg('Uploaded successfully!');
-              setTimeout(() => {
-                setSuccessMsg(''); 
-                setOutletCode(''); // Reset outlet, keep upper selections for next store
-                setTotalShelf(''); setColgateShelf('');
-                setImage(null); setPreview(null);
-              }, 3000);
+              setIsSuccess(true);
             } catch (err) { 
               setErrorMsg("Sync failed: " + err.message); 
             }
@@ -437,7 +422,6 @@
 
           return (
             <div className="max-w-md mx-auto bg-white min-h-[calc(100vh-60px)] shadow-xl border-x border-gray-100 pb-8">
-              {/* Hero Banner Section */}
               <div className="relative h-44 w-full bg-slate-900 rounded-b-3xl overflow-hidden mb-6 shadow-md">
                 <img 
                   src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
@@ -454,158 +438,171 @@
               </div>
 
               <div className="px-6">
-                {successMsg && <div className="mb-4 p-4 bg-green-50 text-green-800 rounded-xl font-bold">{successMsg}</div>}
-                {errorMsg && <div className="mb-4 p-4 bg-red-50 text-red-800 rounded-xl font-bold">{errorMsg}</div>}
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  
-                  {/* Step 1: Explicit Form Inputs for Location */}
-                  <div>
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
-                      <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 1: Outlet Details
-                    </h3>
-                    <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
-                      
-                      {/* Selectable Inputs */}
-                      <div className="space-y-1">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Merchandiser Name</label>
-                         <select className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={merchandiser} onChange={(e) => { setMerchandiser(e.target.value); setVisitDay(''); setAccountName(''); setRoute(''); setOutletCode(''); }} required>
-                           <option value="">Select Merchandiser</option>
-                           {merchandisers.length === 0 && <option disabled>⚠️ No Merchandisers Found</option>}
-                           {merchandisers.map(m => <option key={m} value={m}>{m}</option>)}
-                         </select>
-                      </div>
-
-                      <div className="space-y-1">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Visit Day</label>
-                         <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={visitDay} onChange={(e) => { setVisitDay(e.target.value); setAccountName(''); setRoute(''); setOutletCode(''); }} disabled={!merchandiser} required>
-                           <option value="">Select Visit Day</option>
-                           {visitDays.map(v => <option key={v} value={v}>{v}</option>)}
-                         </select>
-                      </div>
-
-                      <div className="space-y-1">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Account Name</label>
-                         <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={accountName} onChange={(e) => { setAccountName(e.target.value); setRoute(''); setOutletCode(''); }} disabled={!visitDay} required>
-                           <option value="">Select Account</option>
-                           {accounts.map(a => <option key={a} value={a}>{a}</option>)}
-                         </select>
-                      </div>
-
-                      <div className="space-y-1">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Route Name</label>
-                         <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={route} onChange={(e) => { setRoute(e.target.value); setOutletCode(''); }} disabled={!accountName} required>
-                           <option value="">Select Route</option>
-                           {routes.map(r => <option key={r} value={r}>{r}</option>)}
-                         </select>
-                      </div>
-
-                      <div className="space-y-1">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Outlet Name</label>
-                         <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-slate-800" value={outletCode} onChange={(e) => setOutletCode(e.target.value)} disabled={!route} required>
-                           <option value="">Select Outlet</option>
-                           {outlets.map(o => <option key={o.outletCode} value={o.outletCode}>{o.outletName}</option>)}
-                         </select>
-                      </div>
-
-                      {/* Explicit Read-Only Inputs to show full data capture */}
-                      {selectedOutletDetails && (
-                         <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200 animate-in fade-in">
-                            <div className="space-y-1">
-                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Outlet Code</label>
-                               <input type="text" readOnly value={selectedOutletDetails.outletCode} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 outline-none" />
-                            </div>
-                            <div className="space-y-1">
-                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Territory Name</label>
-                               <input type="text" readOnly value={selectedOutletDetails.territoryName} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 outline-none" />
-                            </div>
-                         </div>
-                      )}
-                    </div>
-                  </div>
+                {errorMsg && <div className="mb-4 p-4 bg-red-50 text-red-800 rounded-xl font-bold flex items-center"><AlertCircle className="w-5 h-5 mr-2" />{errorMsg}</div>}
                 
-                  {/* Step 2: Shelf Metrics */}
-                  <div>
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
-                      <Package className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 2: Shelf Share
-                    </h3>
-                    <div className="flex space-x-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
-                       <div className="flex-1">
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Total Category</label>
-                          <input type="number" min="0" required className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-slate-700" placeholder="e.g. 10" value={totalShelf} onChange={e => setTotalShelf(e.target.value)} />
-                       </div>
-                       <div className="flex-1">
-                          <label className="block text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wider">Colgate Shelves</label>
-                          <input type="number" min="0" required className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-red-600" placeholder="e.g. 4" value={colgateShelf} onChange={e => setColgateShelf(e.target.value)} />
-                       </div>
+                {isSuccess ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in zoom-in duration-300">
+                    <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm border border-green-100">
+                      <ClipboardCheck className="w-12 h-12" />
                     </div>
+                    <h2 className="text-2xl font-black text-slate-800 mb-2">Submit Successful!</h2>
+                    <p className="text-sm font-medium text-slate-500 mb-8 px-4">Your visibility execution photo and data have been safely synced.</p>
+                    <button 
+                      onClick={handleNewEntry}
+                      className="w-full py-4 rounded-xl text-white font-bold text-lg bg-red-600 shadow-lg shadow-red-200 hover:bg-red-700 hover:-translate-y-0.5 transition-all active:translate-y-0 active:shadow-md"
+                    >
+                      Make New Entry
+                    </button>
                   </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+                    <div>
+                      <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
+                        <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 1: Outlet Details
+                      </h3>
+                      <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
+                        
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Merchandiser Name</label>
+                           <select className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={merchandiser} onChange={(e) => { setMerchandiser(e.target.value); setVisitDay(''); setAccountName(''); setRoute(''); setOutletCode(''); }} required>
+                             <option value="">Select Merchandiser</option>
+                             {merchandisers.length === 0 && <option disabled>⚠️ No Merchandisers Found</option>}
+                             {merchandisers.map(m => <option key={m} value={m}>{m}</option>)}
+                           </select>
+                        </div>
 
-                  {/* Step 3: Image Capture */}
-                  <div>
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
-                      <Camera className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 3: Execution Photo
-                    </h3>
-                    <div className="relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-32 flex justify-center items-center overflow-hidden hover:bg-slate-100 transition-colors group shadow-sm">
-                      {preview ? (
-                        <>
-                          <img src={preview} className="w-full h-full object-cover" alt="Preview" />
-                          <button 
-                            onClick={clearImage} 
-                            className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-sm text-white rounded-full hover:bg-red-600 transition-all z-10 shadow-sm"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex flex-col items-center justify-center space-y-2">
-                            <div className="p-3 bg-white rounded-full shadow-sm border border-slate-100">
-                               <Camera className="h-6 w-6 text-red-600" />
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Visit Day</label>
+                           <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={visitDay} onChange={(e) => { setVisitDay(e.target.value); setAccountName(''); setRoute(''); setOutletCode(''); }} disabled={!merchandiser} required>
+                             <option value="">Select Visit Day</option>
+                             {visitDays.map(v => <option key={v} value={v}>{v}</option>)}
+                           </select>
+                        </div>
+
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Account Name</label>
+                           <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={accountName} onChange={(e) => { setAccountName(e.target.value); setRoute(''); setOutletCode(''); }} disabled={!visitDay} required>
+                             <option value="">Select Account</option>
+                             {accounts.map(a => <option key={a} value={a}>{a}</option>)}
+                           </select>
+                        </div>
+
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Route Name</label>
+                           <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-medium text-slate-700" value={route} onChange={(e) => { setRoute(e.target.value); setOutletCode(''); }} disabled={!accountName} required>
+                             <option value="">Select Route</option>
+                             {routes.map(r => <option key={r} value={r}>{r}</option>)}
+                           </select>
+                        </div>
+
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Outlet Name</label>
+                           <select className="w-full p-3 bg-white border border-slate-300 rounded-xl disabled:opacity-50 outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-slate-800" value={outletCode} onChange={(e) => setOutletCode(e.target.value)} disabled={!route} required>
+                             <option value="">Select Outlet</option>
+                             {outlets.map(o => <option key={o.outletCode} value={o.outletCode}>{o.outletName}</option>)}
+                           </select>
+                        </div>
+
+                        {selectedOutletDetails && (
+                           <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200 animate-in fade-in">
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Outlet Code</label>
+                                 <input type="text" readOnly value={selectedOutletDetails.outletCode} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 outline-none" />
+                              </div>
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Territory Name</label>
+                                 <input type="text" readOnly value={selectedOutletDetails.territoryName} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 outline-none" />
+                              </div>
+                           </div>
+                        )}
+                      </div>
+                    </div>
+                  
+                    <div>
+                      <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
+                        <Package className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 2: Shelf Share
+                      </h3>
+                      <div className="flex space-x-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
+                         <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Total Category</label>
+                            <input type="number" min="0" required className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-slate-700" placeholder="e.g. 10" value={totalShelf} onChange={e => setTotalShelf(e.target.value)} />
+                         </div>
+                         <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wider">Colgate Shelves</label>
+                            <input type="number" min="0" required className="w-full p-3 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-100 transition-all font-bold text-red-600" placeholder="e.g. 4" value={colgateShelf} onChange={e => setColgateShelf(e.target.value)} />
+                         </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center">
+                        <Camera className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Step 3: Execution Photo
+                      </h3>
+                      <div className="relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-32 flex justify-center items-center overflow-hidden hover:bg-slate-100 transition-colors group shadow-sm">
+                        {preview ? (
+                          <>
+                            <img src={preview} className="w-full h-full object-cover" alt="Preview" />
+                            <button 
+                              onClick={clearImage} 
+                              className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-sm text-white rounded-full hover:bg-red-600 transition-all z-10 shadow-sm"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex flex-col items-center justify-center space-y-2">
+                              <div className="p-3 bg-white rounded-full shadow-sm border border-slate-100">
+                                 <Camera className="h-6 w-6 text-red-600" />
+                              </div>
+                              <span className="font-bold text-slate-500 text-sm">Snap Execution</span>
                             </div>
-                            <span className="font-bold text-slate-500 text-sm">Snap Execution</span>
-                          </div>
-                          <input id="camera-input" type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer z-0" required />
-                        </>
-                      )}
+                            <input id="camera-input" type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer z-0" required />
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <button type="submit" disabled={isUploading} className="w-full py-4 rounded-xl text-white font-bold text-lg bg-red-600 shadow-lg shadow-red-200 hover:bg-red-700 hover:shadow-xl hover:-translate-y-0.5 transition-all active:translate-y-0 active:shadow-md">{isUploading ? 'Syncing...' : 'Submit Execution'}</button>
-                </form>
+                    <button type="submit" disabled={isUploading} className="w-full py-4 rounded-xl text-white font-bold text-lg bg-red-600 shadow-lg shadow-red-200 hover:bg-red-700 hover:shadow-xl hover:-translate-y-0.5 transition-all active:translate-y-0 active:shadow-md">{isUploading ? 'Syncing...' : 'Submit Execution'}</button>
+                  </form>
+                )}
               </div>
             </div>
           );
         }
 
         // ==========================================
-        // AUDITOR DASHBOARD (WEB OPTIMIZED)
+        // AUDITOR DASHBOARD 
         // ==========================================
-        function DashboardApp() {
+        function DashboardApp({ outletMaster }) {
           const [visits, setVisits] = useState([]);
           const [isLoading, setIsLoading] = useState(true);
-
+          const [isSalesLoading, setIsSalesLoading] = useState(true);
           const [searchTerm, setSearchTerm] = useState('');
-          const [filterDate, setFilterDate] = useState(''); 
           
-          const [filterMerchandiser, setFilterMerchandiser] = useState('All'); // NEW Merchandiser Filter
+          // SET DEFAULT VIEW TO TODAY
+          const [filterDate, setFilterDate] = useState(getLocalTodayString()); 
+          const [filterMerchandiser, setFilterMerchandiser] = useState('All');
           const [filterTerritory, setFilterTerritory] = useState('All');
           const [filterRoute, setFilterRoute] = useState('All');
           const [filterAccount, setFilterAccount] = useState('All');
-          const [filterOutlet, setFilterOutlet] = useState('All'); // Outlet Code
+          const [filterOutlet, setFilterOutlet] = useState('All');
           const [filterStatus, setFilterStatus] = useState('All');
           const [previewPhoto, setPreviewPhoto] = useState(null);
+          
+          // Sales State
+          const [outletGrowth, setOutletGrowth] = useState({});
+          const [salesError, setSalesError] = useState('');
 
-          // Derived filter arrays for Dashboard dropdowns - USING HARDCODED OUTLET_MASTER
-          const dashboardMerchandisers = useMemo(() => [...new Set(OUTLET_MASTER.map(o => o.merchandiserName?.trim()).filter(Boolean))].sort(), []);
-          const dashboardTerritories = useMemo(() => [...new Set(OUTLET_MASTER.map(o => o.territoryName?.trim()).filter(Boolean))].sort(), []);
-          const dashboardRoutes = useMemo(() => filterTerritory !== 'All' ? [...new Set(OUTLET_MASTER.filter(o => o.territoryName?.trim() === filterTerritory).map(o => o.routeName?.trim()).filter(Boolean))].sort() : [], [filterTerritory]);
-          const dashboardAccounts = useMemo(() => filterRoute !== 'All' ? [...new Set(OUTLET_MASTER.filter(o => o.routeName?.trim() === filterRoute).map(o => o.accountName?.trim()).filter(Boolean))].sort() : [], [filterRoute]);
-          const dashboardOutlets = useMemo(() => filterAccount !== 'All' ? OUTLET_MASTER.filter(o => o.accountName?.trim() === filterAccount && o.routeName?.trim() === filterRoute) : [], [filterAccount, filterRoute]);
+          const dashboardMerchandisers = useMemo(() => [...new Set(outletMaster.map(o => o.merchandiserName?.trim()).filter(Boolean))].sort(), [outletMaster]);
+          const dashboardTerritories = useMemo(() => [...new Set(outletMaster.map(o => o.territoryName?.trim()).filter(Boolean))].sort(), [outletMaster]);
+          const dashboardRoutes = useMemo(() => filterTerritory !== 'All' ? [...new Set(outletMaster.filter(o => o.territoryName?.trim() === filterTerritory).map(o => o.routeName?.trim()).filter(Boolean))].sort() : [], [filterTerritory, outletMaster]);
+          const dashboardAccounts = useMemo(() => filterRoute !== 'All' ? [...new Set(outletMaster.filter(o => o.routeName?.trim() === filterRoute).map(o => o.accountName?.trim()).filter(Boolean))].sort() : [], [filterRoute, outletMaster]);
+          const dashboardOutlets = useMemo(() => filterAccount !== 'All' ? outletMaster.filter(o => o.accountName?.trim() === filterAccount && o.routeName?.trim() === filterRoute) : [], [filterAccount, filterRoute, outletMaster]);
 
-          // --- FETCH DATA FROM GOOGLE SHEETS ---
+          // --- FETCH VISITS ---
           useEffect(() => {
             const fetchFromSheets = async () => {
-              setIsLoading(true);
               try {
                 const response = await fetch(GOOGLE_SCRIPT_URL);
                 const data = await response.json();
@@ -619,24 +616,152 @@
             fetchFromSheets();
           }, []);
 
-          // --- KPI Calculation Logic Linked to Master Data ---
+          // --- FETCH & CALCULATE SALES DATA ---
+          useEffect(() => {
+            const fetchSalesData = async () => {
+              try {
+                const csvText = await fetchCSVData(SALES_CSV_URL);
+                
+                const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+                if (lines.length < 2) return;
+
+                // Support for short month names like "Jan", "Feb", "Mar"
+                const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+                
+                // --- 1. FIND THE LATEST MONTH AND YEAR IN THE DATASET ---
+                const parsedRows = [];
+                let latestYear = 0;
+                let latestMonthIndex = -1;
+
+                for (let i = 1; i < lines.length; i++) {
+                  const row = parseCSVLine(lines[i]);
+                  parsedRows.push(row);
+                  
+                  if (row.length > 14) {
+                    const y = parseInt(row[5], 10); // Column F: YEAR
+                    // Extract first 3 letters safely and make lowercase to match our array
+                    const mName = row[14] ? row[14].trim().toLowerCase().substring(0, 3) : ""; 
+                    const mIdx = monthNames.indexOf(mName);
+                    
+                    if (!isNaN(y) && mIdx !== -1) {
+                      if (y > latestYear) {
+                        latestYear = y;
+                        latestMonthIndex = mIdx;
+                      } else if (y === latestYear && mIdx > latestMonthIndex) {
+                        latestMonthIndex = mIdx;
+                      }
+                    }
+                  }
+                }
+
+                // Fallback just in case data is empty or malformed
+                if (latestYear === 0) {
+                  const now = new Date();
+                  latestYear = now.getFullYear();
+                  latestMonthIndex = now.getMonth();
+                }
+
+                // --- 2. SET PERIODS BASED ON THE LATEST AVAILABLE DATA ---
+                const currentYear = latestYear;
+                const currentMonthIndex = latestMonthIndex;
+                const currentMonthName = monthNames[currentMonthIndex];
+                
+                // Handle rolling backward to December if current is January
+                let prevMonthIndex = currentMonthIndex - 1;
+                let prevMonthYear = currentYear;
+                if (prevMonthIndex < 0) {
+                  prevMonthIndex = 11;
+                  prevMonthYear = currentYear - 1;
+                }
+                const prevMonthName = monthNames[prevMonthIndex];
+                
+                // Array of months up to the current latest month (e.g., ["jan", "feb", "mar"])
+                const ytdMonths = monthNames.slice(0, currentMonthIndex + 1);
+
+                const salesAgg = {};
+
+                // --- 3. AGGREGATE SALES EXACTLY AS REQUESTED ---
+                for (let i = 0; i < parsedRows.length; i++) {
+                  const row = parsedRows[i];
+                  if (row.length > 14) {
+                    const code = row[1]?.trim(); // Column B: CODE
+                    const year = parseInt(row[5], 10); // Column F: YEAR
+                    const sales = parseFloat((row[13] || "").replace(/,/g, '')) || 0; // Column N: ACTUAL SALES
+                    const monthName = row[14] ? row[14].trim().toLowerCase().substring(0, 3) : ""; // Column O: MONTH NAME
+
+                    if (code && !isNaN(year) && sales !== 0) {
+                      if (!salesAgg[code]) salesAgg[code] = { currentMonth: 0, prevMonth: 0, ytdCurrent: 0, ytdPrev: 0 };
+                      
+                      // MoM Accumulation
+                      if (year === currentYear && monthName === currentMonthName) salesAgg[code].currentMonth += sales;
+                      if (year === prevMonthYear && monthName === prevMonthName) salesAgg[code].prevMonth += sales;
+
+                      // YTD Accumulation
+                      if (ytdMonths.includes(monthName)) {
+                        if (year === currentYear) salesAgg[code].ytdCurrent += sales; // Current Year (e.g. 2026 Jan to Mar)
+                        if (year === currentYear - 1) salesAgg[code].ytdPrev += sales; // Previous Year (e.g. 2025 Jan to Mar)
+                      }
+                    }
+                  }
+                }
+
+                // --- 4. CALCULATE GROWTH WITH (CURRENT / PREV) - 1 ---
+                const growthMap = {};
+                Object.keys(salesAgg).forEach(code => {
+                   const data = salesAgg[code];
+                   
+                   // (Current / Previous) - 1
+                   const mom = data.prevMonth ? ((data.currentMonth / data.prevMonth) - 1) * 100 : (data.currentMonth > 0 ? 100 : 0);
+                   const ytd = data.ytdPrev ? ((data.ytdCurrent / data.ytdPrev) - 1) * 100 : (data.ytdCurrent > 0 ? 100 : 0);
+                   
+                   growthMap[code] = { mom, ytd };
+                });
+
+                setOutletGrowth(growthMap);
+              } catch (error) {
+                console.error("Failed to fetch Sales Data:", error);
+                setSalesError(error.message);
+              } finally {
+                setIsSalesLoading(false);
+              }
+            };
+            fetchSalesData();
+          }, []);
+
           const currentHierarchyCodes = useMemo(() => {
-            let list = OUTLET_MASTER;
+            let list = outletMaster;
             if (filterMerchandiser !== 'All') list = list.filter(o => o.merchandiserName?.trim() === filterMerchandiser);
             if (filterTerritory !== 'All') list = list.filter(o => o.territoryName?.trim() === filterTerritory);
             if (filterRoute !== 'All') list = list.filter(o => o.routeName?.trim() === filterRoute);
             if (filterAccount !== 'All') list = list.filter(o => o.accountName?.trim() === filterAccount);
-            if (filterOutlet !== 'All') list = list.filter(o => o.outletCode?.trim() === filterOutlet);
-            return list.map(o => o.outletCode);
-          }, [filterMerchandiser, filterTerritory, filterRoute, filterAccount, filterOutlet]);
+            if (filterOutlet !== 'All') list = list.filter(o => String(o.outletCode)?.trim() === filterOutlet);
+            return list.map(o => String(o.outletCode));
+          }, [filterMerchandiser, filterTerritory, filterRoute, filterAccount, filterOutlet, outletMaster]);
 
-          const baseFilteredData = useMemo(() => {
-            // 1. First, sanitize the incoming sheet data so filters work properly
+          const hierarchyFilteredData = useMemo(() => {
             let filtered = visits.map(v => {
-              const d = new Date(v.timestamp);
+              let finalTimestamp = v.timestamp;
+
+              if (v.dateString) {
+                let backupDate = new Date(v.dateString);
+                if (isNaN(backupDate.getTime()) && String(v.dateString).includes('/')) {
+                   const parts = String(v.dateString).split('/');
+                   if (parts.length === 3) {
+                     let m = parseInt(parts[0], 10);
+                     let d = parseInt(parts[1], 10);
+                     if (m > 12) { const tmp = m; m = d; d = tmp; }
+                     backupDate = new Date(`${parts[2]}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T00:00:00`);
+                   }
+                }
+                if (!isNaN(backupDate.getTime())) {
+                  const dayDiff = Math.abs(finalTimestamp - backupDate.getTime()) / 86400000;
+                  if (dayDiff > 1) finalTimestamp = backupDate.getTime();
+                }
+              }
+
+              const d = new Date(finalTimestamp);
               const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               
-              // Handle legacy status mapping automatically
               let s = (v.status || 'Pending Audit').trim();
               if (s === 'Compliant' || s === 'Passed') s = 'Planogram Compliant';
               if (s === 'Need Intervention' || s === 'Failed') s = 'Non Compliant';
@@ -644,65 +769,69 @@
               return {
                 ...v,
                 status: s, 
-                merchandiserName: (v.merchandiserName || '').trim(), // Clean up incoming name
-                derivedDateString: localDateStr
+                merchandiserName: (v.merchandiserName || '').trim(),
+                derivedDateString: localDateStr,
+                timestamp: finalTimestamp 
               };
             });
 
-            // 2. Apply filters
-            if (filterDate) filtered = filtered.filter(v => v.derivedDateString === filterDate);
             if (filterMerchandiser !== 'All') filtered = filtered.filter(v => v.merchandiserName === filterMerchandiser);
             if (filterTerritory !== 'All') filtered = filtered.filter(v => v.territoryName?.trim() === filterTerritory);
             if (filterRoute !== 'All') filtered = filtered.filter(v => v.routeName?.trim() === filterRoute);
             if (filterAccount !== 'All') filtered = filtered.filter(v => v.accountName?.trim() === filterAccount);
-            if (filterOutlet !== 'All') filtered = filtered.filter(v => v.outletCode?.trim() === filterOutlet);
+            if (filterOutlet !== 'All') filtered = filtered.filter(v => String(v.outletCode)?.trim() === filterOutlet);
             
             if (searchTerm.trim()) {
               const lowerSearch = searchTerm.toLowerCase();
               filtered = filtered.filter(v => 
-                (v.outletName && v.outletName.toLowerCase().includes(lowerSearch)) || 
-                (v.outletCode && v.outletCode.toLowerCase().includes(lowerSearch)) ||
-                (v.merchandiserName && v.merchandiserName.toLowerCase().includes(lowerSearch))
+                (v.outletName && String(v.outletName).toLowerCase().includes(lowerSearch)) || 
+                (v.outletCode && String(v.outletCode).toLowerCase().includes(lowerSearch)) ||
+                (v.merchandiserName && String(v.merchandiserName).toLowerCase().includes(lowerSearch))
               );
             }
             return filtered;
-          }, [visits, filterDate, filterMerchandiser, filterTerritory, filterRoute, filterAccount, filterOutlet, searchTerm]);
+          }, [visits, filterMerchandiser, filterTerritory, filterRoute, filterAccount, filterOutlet, searchTerm]);
 
-          const statusCounts = useMemo(() => {
-            const counts = { 'All': baseFilteredData.length, 'Pending Audit': 0, 'Planogram Compliant': 0, 'Improvement Outlet': 0, 'Non Compliant': 0 };
-            baseFilteredData.forEach(v => {
+          const dateFilteredData = useMemo(() => {
+            if (!filterDate) return hierarchyFilteredData;
+            return hierarchyFilteredData.filter(v => v.derivedDateString === filterDate);
+          }, [hierarchyFilteredData, filterDate]);
+
+          const tabsCounts = useMemo(() => {
+            const todayStr = getLocalTodayString();
+            const counts = {
+              'AllHistory': hierarchyFilteredData.length,
+              'Today': hierarchyFilteredData.filter(v => v.derivedDateString === todayStr).length,
+              'Pending Audit': 0,
+              'Planogram Compliant': 0,
+              'Improvement Outlet': 0,
+              'Non Compliant': 0
+            };
+            
+            dateFilteredData.forEach(v => {
               if (counts[v.status] !== undefined) counts[v.status]++;
             });
             return counts;
-          }, [baseFilteredData]);
+          }, [hierarchyFilteredData, dateFilteredData]);
 
-          // NEW: Flattened table data instead of grouped data
           const tableData = useMemo(() => {
-            let finalData = baseFilteredData;
+            let finalData = dateFilteredData;
             if (filterStatus !== 'All') finalData = finalData.filter(v => v.status === filterStatus);
             
-            // Sort all records chronologically (newest first)
             return finalData.sort((a, b) => b.timestamp - a.timestamp).map(v => {
-              // DUMMY DATA GENERATION FOR PREVIEW (Safe to remove when connecting to real Sheet columns)
-              // Generates a consistent fake percentage based on the outlet code so it doesn't jump around
-              const hash = v.outletCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-              const mom = (hash % 11) - 5; // Random between -5 and +5
-              const ytd = (hash % 21) - 5; // Random between -5 and +15
+              const growth = outletGrowth[String(v.outletCode)] || { mom: 0, ytd: 0 };
               
               return {
                 ...v,
-                momGrowth: v.momGrowth !== undefined ? v.momGrowth : (mom * 2), // Fake e.g., -10%, +6%, etc.
-                ytdGrowth: v.ytdGrowth !== undefined ? v.ytdGrowth : (ytd * 2), 
+                momGrowth: (isNaN(growth.mom) || !isFinite(growth.mom)) ? 0 : growth.mom.toFixed(1), 
+                ytdGrowth: (isNaN(growth.ytd) || !isFinite(growth.ytd)) ? 0 : growth.ytd.toFixed(1)
               };
             });
-          }, [baseFilteredData, filterStatus]);
+          }, [dateFilteredData, filterStatus, outletGrowth]);
 
           const updateAuditStatus = async (id, status, visitData) => {
             try {
-              // 1. Optimistically update UI so it feels instant
               setVisits(prevVisits => prevVisits.map(v => v.id === id ? { ...v, status } : v));
-              
-              // 2. Send update to Google Sheets silently in the background
               if (visitData) {
                 await fetch(GOOGLE_SCRIPT_URL, {
                   method: 'POST',
@@ -711,7 +840,7 @@
                   headers: { 'Content-Type': 'text/plain' },
                   body: JSON.stringify({
                     action: 'updateStatus',
-                    outletCode: visitData.outletCode,
+                    outletCode: String(visitData.outletCode),
                     merchandiserName: visitData.merchandiserName,
                     status: status
                   })
@@ -736,7 +865,6 @@
             return <span className="text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-[11px] font-bold inline-flex items-center">0%</span>;
           };
 
-          // Overall visits for the selected hierarchy (ignoring date filter for KPIs)
           const kpiVisits = useMemo(() => {
             return visits
               .map(v => {
@@ -745,11 +873,11 @@
                  if(s === 'Need Intervention' || s === 'Failed') s = 'Non Compliant';
                  return {...v, status: s};
               })
-              .filter(v => currentHierarchyCodes.includes(v.outletCode));
+              .filter(v => currentHierarchyCodes.includes(String(v.outletCode)));
           }, [visits, currentHierarchyCodes]);
 
           const stats = useMemo(() => {
-            const covered = new Set(kpiVisits.map(v => v.outletCode)).size;
+            const covered = new Set(kpiVisits.map(v => String(v.outletCode))).size;
             const audited = kpiVisits.filter(v => v.status !== 'Pending Audit').length;
             const passed = kpiVisits.filter(v => v.status === 'Planogram Compliant').length;
             return {
@@ -763,13 +891,10 @@
 
           const handleExport = () => {
             const headers = ['Date', 'Time', 'Account Name', 'Outlet Code', 'Outlet Name', 'Territory Name', 'Route Name', 'Visit Day', 'Merchandiser Name', 'Total Shelves', 'Colgate Shelves', 'Share of Shelf %', 'Status', 'Image Link'];
-            
-            let exportData = baseFilteredData;
-            if (filterStatus !== 'All') exportData = exportData.filter(v => v.status === filterStatus);
 
             const csvContent = [
               headers.join(','),
-              ...exportData.map(v => {
+              ...tableData.map(v => {
                 const d = new Date(v.timestamp);
                 return [
                   `"${d.toLocaleDateString()}"`,
@@ -794,29 +919,35 @@
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `MT_Audit_Report_${filterDate || 'All'}.csv`);
+            link.setAttribute('download', `MT_Audit_Report.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
           };
 
-          if (isLoading) {
+          if (isLoading || isSalesLoading) {
             return (
               <div className="flex flex-col items-center justify-center min-h-[70vh] w-full">
                  <Loader2 className="h-12 w-12 text-red-600 animate-spin mb-4" />
-                 <h3 className="text-slate-600 font-bold text-lg">Loading Executions...</h3>
+                 <h3 className="text-slate-600 font-bold text-lg">Loading Dashboard Data...</h3>
                  <p className="text-slate-400 font-medium text-sm mt-1">Fetching live data from Google Sheets</p>
               </div>
             );
           }
 
+          if (salesError) {
+             console.warn("Sales module failed to load. Will continue without MoM/YTD data.", salesError);
+          }
+
+          // Variables to determine which UI tab is active
+          const isToday = filterDate === getLocalTodayString();
+          const isAllHistory = filterDate === '';
+
           return (
             <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4">
               
-              {/* COMPACT KPI CARDS */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* Coverage Card */}
                 <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
                    <div className="flex items-center gap-3">
                      <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Store className="h-5 w-5" /></div>
@@ -828,7 +959,6 @@
                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">{Math.round((stats.coverage/(stats.totalOutlets || 1))*100)}%</span>
                 </div>
 
-                {/* Audit Pipeline Card */}
                 <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
                    <div className="flex items-center gap-3">
                      <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><ClipboardCheck className="h-5 w-5" /></div>
@@ -840,7 +970,6 @@
                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">{stats.totalVisits - stats.audited} left</span>
                 </div>
 
-                {/* Quality Score Card */}
                 <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
                    <div className="flex items-center gap-3">
                      <div className="p-2 bg-green-50 text-green-600 rounded-lg"><Target className="h-5 w-5" /></div>
@@ -855,9 +984,7 @@
                 </div>
               </div>
 
-              {/* COMPACT CONTROL PANEL */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-col gap-3">
-                {/* Top Header Section */}
                 <div className="flex flex-col sm:flex-row gap-2 items-center">
                    <div className="w-full sm:w-auto bg-slate-100 px-3 py-1.5 rounded-lg flex items-center shrink-0">
                      <Filter className="h-3.5 w-3.5 mr-1.5 text-red-600" />
@@ -865,7 +992,7 @@
                    </div>
                    <div className="relative w-full sm:w-40">
                       <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                      <input type="date" className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-bold outline-none focus:border-red-300 transition-all" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+                      <input type="date" className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-bold outline-none focus:border-red-300 transition-all" value={filterDate} onChange={e => { setFilterDate(e.target.value); setFilterStatus('All'); }} />
                    </div>
                    <div className="relative flex-1 w-full">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -876,7 +1003,6 @@
                    </button>
                 </div>
 
-                {/* Hierarchy Grid Section (Expanded to 5 columns for Merchandiser Filter) */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
                   <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all appearance-none cursor-pointer" value={filterMerchandiser} onChange={e => setFilterMerchandiser(e.target.value)}>
                     <option value="All">All Merchandisers</option>
@@ -896,21 +1022,23 @@
                   </select>
                   <select className="w-full p-1.5 bg-slate-50 border border-slate-200 hover:bg-white rounded-lg text-xs font-semibold text-slate-600 outline-none focus:border-red-300 transition-all disabled:opacity-50 appearance-none cursor-pointer" value={filterOutlet} onChange={e => setFilterOutlet(e.target.value)} disabled={filterAccount === 'All'}>
                     <option value="All">All Outlets</option>
-                    {dashboardOutlets.map(o => <option key={o.outletCode} value={o.outletCode}>[{o.outletCode}] {o.outletName}</option>)}
+                    {dashboardOutlets.map(o => <option key={o.outletCode} value={o.outletCode}>{o.outletCode ? `[${o.outletCode}] ` : ''}{o.outletName}</option>)}
                   </select>
                 </div>
               </div>
 
-              {/* STATUS QUICK TABS */}
               <div className="flex flex-wrap gap-2 items-center">
-                 <button onClick={() => setFilterStatus('All')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'All' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>All Images ({statusCounts['All']})</button>
-                 <button onClick={() => setFilterStatus('Pending Audit')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Pending Audit' ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}>Pending ({statusCounts['Pending Audit']})</button>
-                 <button onClick={() => setFilterStatus('Planogram Compliant')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Planogram Compliant' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-slate-500 border border-slate-200 hover:bg-green-50 hover:text-green-600'}`}>Planogram Compliant ({statusCounts['Planogram Compliant']})</button>
-                 <button onClick={() => setFilterStatus('Improvement Outlet')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Improvement Outlet' ? 'bg-yellow-400 text-yellow-900 border-yellow-400' : 'bg-white text-slate-500 border border-slate-200 hover:bg-yellow-50 hover:text-yellow-700'}`}>Improvement Outlet ({statusCounts['Improvement Outlet']})</button>
-                 <button onClick={() => setFilterStatus('Non Compliant')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Non Compliant' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-500 border border-slate-200 hover:bg-red-50 hover:text-red-600'}`}>Non Compliant ({statusCounts['Non Compliant']})</button>
+                 <button onClick={() => { setFilterDate(''); setFilterStatus('All'); }} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${isAllHistory && filterStatus === 'All' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>All History ({tabsCounts['AllHistory']})</button>
+                 <button onClick={() => { setFilterDate(getLocalTodayString()); setFilterStatus('All'); }} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${isToday && filterStatus === 'All' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600'}`}>Today's ({tabsCounts['Today']})</button>
+                 
+                 <div className="w-px h-6 bg-slate-300 mx-1 hidden sm:block"></div>
+
+                 <button onClick={() => setFilterStatus('Pending Audit')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Pending Audit' ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'}`}>Pending ({tabsCounts['Pending Audit']})</button>
+                 <button onClick={() => setFilterStatus('Planogram Compliant')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Planogram Compliant' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-slate-500 border border-slate-200 hover:bg-green-50 hover:text-green-600'}`}>Planogram Compliant ({tabsCounts['Planogram Compliant']})</button>
+                 <button onClick={() => setFilterStatus('Improvement Outlet')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Improvement Outlet' ? 'bg-yellow-400 text-yellow-900 border-yellow-400' : 'bg-white text-slate-500 border border-slate-200 hover:bg-yellow-50 hover:text-yellow-700'}`}>Improvement ({tabsCounts['Improvement Outlet']})</button>
+                 <button onClick={() => setFilterStatus('Non Compliant')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${filterStatus === 'Non Compliant' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-500 border border-slate-200 hover:bg-red-50 hover:text-red-600'}`}>Non Compliant ({tabsCounts['Non Compliant']})</button>
               </div>
 
-              {/* CONTENT LIST */}
               {tableData.length === 0 ? (
                 <div className="flex flex-col items-center justify-center min-h-[50vh] text-center bg-white rounded-3xl border border-slate-200 shadow-sm w-full">
                    <Search className="h-16 w-16 text-slate-200 mb-4" />
@@ -1009,12 +1137,10 @@
                 </div>
               )}
 
-              {/* PREVIEW MODAL */}
               {previewPhoto && (
                 <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-4 sm:p-8" onClick={() => setPreviewPhoto(null)}>
                    <div className="max-w-5xl w-full flex flex-col h-[90vh] shadow-2xl" onClick={e => e.stopPropagation()}>
                       
-                      {/* Modal Header */}
                       <div className="bg-slate-900 border-b border-white/10 p-5 rounded-t-3xl flex justify-between items-center">
                          <div>
                             <div className="flex items-center gap-2">
@@ -1026,9 +1152,7 @@
                          <button onClick={() => setPreviewPhoto(null)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
                       </div>
 
-                      {/* Modal Image Body */}
                       <div className="flex-1 bg-black/50 overflow-hidden flex items-center justify-center border-x border-white/5 relative">
-                         {/* APPLY DIRECT IMAGE URL HELPER HERE */}
                          <img src={getDirectImageUrl(previewPhoto.imageUrl)} className="max-h-full max-w-full object-contain" alt="Preview Full" />
                          <div className="absolute top-4 left-4 scale-110 shadow-lg">{getStatusBadge(previewPhoto.status)}</div>
                          
@@ -1046,7 +1170,6 @@
                          </div>
                       </div>
 
-                      {/* Modal Audit Action Footer */}
                       <div className="bg-slate-900 border-t border-white/10 p-5 rounded-b-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
                          <div className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center">
                             <Target className="w-4 h-4 mr-2 text-slate-500" /> Audit Decision
@@ -1062,13 +1185,13 @@
                               onClick={() => { updateAuditStatus(previewPhoto.id, 'Improvement Outlet', previewPhoto); setPreviewPhoto({...previewPhoto, status: 'Improvement Outlet'}); }} 
                               className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-3 rounded-xl transition-all font-bold text-sm border ${previewPhoto.status === 'Improvement Outlet' ? 'bg-yellow-400 text-yellow-900 border-yellow-400 shadow-lg shadow-yellow-900/50' : 'bg-transparent text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10'}`}
                             >
-                              <AlertCircle className="w-4 h-4 mr-1.5" /> Improvement Outlet
+                              <AlertCircle className="w-4 h-4 mr-1.5" /> Improvement
                             </button>
                             <button 
                               onClick={() => { updateAuditStatus(previewPhoto.id, 'Planogram Compliant', previewPhoto); setPreviewPhoto({...previewPhoto, status: 'Planogram Compliant'}); }} 
                               className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-3 rounded-xl transition-all font-bold text-sm border ${previewPhoto.status === 'Planogram Compliant' ? 'bg-green-500 text-white border-green-400 shadow-lg shadow-green-900/50' : 'bg-transparent text-green-400 border-green-500/30 hover:bg-green-500/10'}`}
                             >
-                              <CheckCircle className="w-4 h-4 mr-1.5" /> Planogram Compliant
+                              <CheckCircle className="w-4 h-4 mr-1.5" /> Compliant
                             </button>
                          </div>
                       </div>
@@ -1081,7 +1204,6 @@
         }
         // --- YOUR CODE ENDS HERE ---
 
-        // Render the component to the DOM
         const container = document.getElementById('root');
         const root = createRoot(container);
         root.render(<App />);
